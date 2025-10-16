@@ -182,5 +182,5 @@ php artisan package:installrequire roilafx/seoevobust "*"
 ```
 2. Публикация стилей и скриптов
 ```
-php artisan vendor:publish --provider="roilafx\Seoevobust\SeoevobustServiceProvider"
+php artisan vendor:publish --provider="roilafx\seoevobust\SeoevobustServiceProvider"
 ```
