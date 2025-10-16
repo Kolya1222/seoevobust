@@ -3,15 +3,14 @@
   "description": "Выполнение постраничного SEO анализа сайта",
   "autoload": {
     "psr-4": {
-      "roilafx\\Seoevobust\\": "src"
+      "roilafx\\seoevobust\\": "src"
     }
   },
   "extra": {
     "laravel": {
       "providers": [
-        "roilafx\\Seoevobust\\SeoevobustServiceProvider"
+        "roilafx\\seoevobust\\SeoevobustServiceProvider"
       ]
-
     }
   }
 }
