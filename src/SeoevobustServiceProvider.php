@@ -1,5 +1,5 @@
 <?php 
-namespace EvolutionCMS\Seoevobust;
+namespace roilafx\seoevobust;
 
 use EvolutionCMS\ServiceProvider;
 
