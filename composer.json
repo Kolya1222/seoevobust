@@ -1,0 +1,17 @@
+{
+  "name": "roilafx/seoevobust",
+  "description": "Выполнение постраничного SEO анализа сайта",
+  "autoload": {
+    "psr-4": {
+      "roilafx\\Seoevobust\\": "src"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "roilafx\\Seoevobust\\SeoevobustServiceProvider"
+      ]
+
+    }
+  }
+}
