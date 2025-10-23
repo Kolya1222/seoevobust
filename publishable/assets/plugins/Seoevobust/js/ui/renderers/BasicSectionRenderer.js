@@ -15,7 +15,7 @@ export default class BasicSectionRenderer {
         } = data;
 
         return `
-            <h4>📊 Базовые SEO элементы</h4>
+            <h4>Базовые SEO элементы</h4>
             <div class="metrics-grid">
                 ${this.renderMetricCard('Заголовок', title.exists ? '✅' : '❌', 
                     `${title.length || 0} символов`, title.value || 'Не задан', 
@@ -72,7 +72,7 @@ export default class BasicSectionRenderer {
 
         let headingsHtml = `
             <div class="headings-section">
-                <h5>📑 Структура заголовков</h5>
+                <h5>Структура заголовков</h5>
                 <div class="headings-grid">
         `;
 

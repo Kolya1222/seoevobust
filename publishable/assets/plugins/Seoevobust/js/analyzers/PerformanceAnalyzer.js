@@ -4,21 +4,19 @@ export default class PerformanceAnalyzer {
         this.observers = [];
     }
 
-    analyze() {
+    async analyze() {
         try {
             // Основные метрики
             const navigationMetrics = this.analyzeNavigationTiming();
             const resourceMetrics = this.analyzeResourceTiming();
             const paintMetrics = this.analyzePaintTiming();
-            const coreWebVitals = this.analyzeCoreWebVitals();
             const memoryMetrics = this.analyzeMemoryUsage();
             const optimizationMetrics = this.analyzeOptimizations();
 
-            // Расчет общего балла
+            // Расчет общего балла с защитой от undefined
             const perfScore = this.calculatePerformanceScore(
                 navigationMetrics,
                 resourceMetrics,
-                coreWebVitals,
                 optimizationMetrics
             );
 
@@ -26,7 +24,6 @@ export default class PerformanceAnalyzer {
                 ...navigationMetrics,
                 ...resourceMetrics,
                 ...paintMetrics,
-                coreWebVitals: coreWebVitals,
                 memory: memoryMetrics,
                 optimizations: optimizationMetrics,
                 score: perfScore,
@@ -34,7 +31,6 @@ export default class PerformanceAnalyzer {
                 recommendations: this.generatePerformanceRecommendations(
                     navigationMetrics,
                     resourceMetrics,
-                    coreWebVitals,
                     optimizationMetrics
                 )
             };
@@ -155,183 +151,6 @@ export default class PerformanceAnalyzer {
         };
     }
 
-    analyzeCoreWebVitals() {
-        return {
-            lcp: this.measureLCP(),
-            fid: this.measureFID(),
-            cls: this.measureCLS(),
-            inp: this.measureINP(),
-            tbt: this.measureTBT()
-        };
-    }
-
-    measureLCP() {
-        return new Promise((resolve) => {
-            try {
-                let lcpValue = 2500; // fallback
-
-                const observer = new PerformanceObserver((entryList) => {
-                    const entries = entryList.getEntries();
-                    const lastEntry = entries[entries.length - 1];
-                    
-                    if (lastEntry) {
-                        lcpValue = Math.round(lastEntry.startTime);
-                        resolve({
-                            value: lcpValue,
-                            rating: this.getLCPRating(lcpValue),
-                            element: this.getLCPElement(lastEntry)
-                        });
-                    }
-                });
-
-                observer.observe({
-                    entryTypes: ['largest-contentful-paint']
-                });
-
-                // Таймаут на случай если LCP не зафиксируется
-                setTimeout(() => {
-                    observer.disconnect();
-                    resolve({
-                        value: lcpValue,
-                        rating: this.getLCPRating(lcpValue),
-                        element: 'Не определен'
-                    });
-                }, 10000);
-
-            } catch (e) {
-                resolve({
-                    value: 2500,
-                    rating: 'poor',
-                    element: 'Не определен'
-                });
-            }
-        });
-    }
-
-    measureFID() {
-        return new Promise((resolve) => {
-            try {
-                let fidValue = 100;
-
-                const observer = new PerformanceObserver((entryList) => {
-                    const entries = entryList.getEntries();
-                    if (entries.length > 0) {
-                        const firstEntry = entries[0];
-                        fidValue = Math.round(firstEntry.processingStart - firstEntry.startTime);
-                        
-                        observer.disconnect();
-                        resolve({
-                            value: fidValue,
-                            rating: this.getFIDRating(fidValue)
-                        });
-                    }
-                });
-
-                observer.observe({
-                    type: 'first-input',
-                    buffered: true
-                });
-
-                setTimeout(() => {
-                    observer.disconnect();
-                    resolve({
-                        value: fidValue,
-                        rating: this.getFIDRating(fidValue)
-                    });
-                }, 5000);
-
-            } catch (e) {
-                resolve({
-                    value: 100,
-                    rating: 'poor'
-                });
-            }
-        });
-    }
-
-    measureCLS() {
-        return new Promise((resolve) => {
-            try {
-                let clsValue = 0;
-
-                const observer = new PerformanceObserver((entryList) => {
-                    for (const entry of entryList.getEntries()) {
-                        if (!entry.hadRecentInput) {
-                            clsValue += entry.value;
-                        }
-                    }
-                });
-
-                observer.observe({
-                    type: 'layout-shift',
-                    buffered: true
-                });
-
-                setTimeout(() => {
-                    observer.disconnect();
-                    resolve({
-                        value: parseFloat(clsValue.toFixed(3)),
-                        rating: this.getCLSRating(clsValue)
-                    });
-                }, 5000);
-
-            } catch (e) {
-                resolve({
-                    value: 0.1,
-                    rating: 'poor'
-                });
-            }
-        });
-    }
-
-    measureINP() {
-        // INP требует больше данных, поэтому оцениваем приблизительно
-        return {
-            value: 150,
-            rating: 'good',
-            note: 'Требуется длительное наблюдение'
-        };
-    }
-
-    measureTBT() {
-        // Total Blocking Time - оцениваем на основе Long Tasks
-        return new Promise((resolve) => {
-            try {
-                let tbtValue = 0;
-
-                const observer = new PerformanceObserver((entryList) => {
-                    const entries = entryList.getEntries();
-                    entries.forEach(entry => {
-                        // Блокирующее время = duration - 50ms
-                        const blockingTime = entry.duration - 50;
-                        if (blockingTime > 0) {
-                            tbtValue += blockingTime;
-                        }
-                    });
-                });
-
-                observer.observe({
-                    type: 'long-task',
-                    buffered: true
-                });
-
-                setTimeout(() => {
-                    observer.disconnect();
-                    resolve({
-                        value: Math.round(tbtValue),
-                        rating: this.getTBTRating(tbtValue)
-                    });
-                }, 5000);
-
-            } catch (e) {
-                resolve({
-                    value: 200,
-                    rating: 'poor'
-                });
-            }
-        });
-    }
-
     analyzeMemoryUsage() {
         if (performance.memory) {
             const memory = performance.memory;
@@ -405,65 +224,33 @@ export default class PerformanceAnalyzer {
         return contentElements.length > 10 ? 1800 : 1200;
     }
 
-    getLCPElement(entry) {
-        if (entry.element) {
-            return entry.element.tagName.toLowerCase();
-        }
-        return 'unknown';
-    }
-
-    // Рейтинги Core Web Vitals
-    getLCPRating(value) {
-        if (value <= 2500) return 'good';
-        if (value <= 4000) return 'needs-improvement';
-        return 'poor';
-    }
-
-    getFIDRating(value) {
-        if (value <= 100) return 'good';
-        if (value <= 300) return 'needs-improvement';
-        return 'poor';
-    }
-
-    getCLSRating(value) {
-        if (value <= 0.1) return 'good';
-        if (value <= 0.25) return 'needs-improvement';
-        return 'poor';
-    }
-
-    getTBTRating(value) {
-        if (value <= 200) return 'good';
-        if (value <= 600) return 'needs-improvement';
-        return 'poor';
-    }
-
-    calculatePerformanceScore(navigation, resources, coreVitals, optimizations) {
+    calculatePerformanceScore(navigation, resources, optimizations) {
         let score = 100;
+        
+        const safeNavigation = navigation || {};
+        const safeResources = resources || {};
+        const safeOptimizations = optimizations || {};
 
         // Navigation Timing (30%)
-        if (navigation.loadTime > 3000) score -= 10;
-        if (navigation.loadTime > 5000) score -= 20;
-        if (navigation.ttfb > 600) score -= 5;
-        if (navigation.domContentLoaded > 3000) score -= 5;
+        if (safeNavigation.loadTime > 3000) score -= 10;
+        if (safeNavigation.loadTime > 5000) score -= 20;
+        if (safeNavigation.ttfb > 600) score -= 5;
+        if (safeNavigation.domContentLoaded > 3000) score -= 5;
 
         // Resource Efficiency (25%)
-        if (resources.totalSize > 2 * 1024 * 1024) score -= 10;
-        if (resources.totalSize > 3 * 1024 * 1024) score -= 15;
-        if (resources.totalRequests > 50) score -= 5;
-        if (resources.totalRequests > 100) score -= 10;
+        if (safeResources.totalSize > 2 * 1024 * 1024) score -= 10;
+        if (safeResources.totalSize > 3 * 1024 * 1024) score -= 15;
+        if (safeResources.totalRequests > 50) score -= 5;
+        if (safeResources.totalRequests > 100) score -= 10;
 
-        // Core Web Vitals (30%)
-        if (coreVitals.lcp.rating === 'needs-improvement') score -= 5;
-        if (coreVitals.lcp.rating === 'poor') score -= 15;
-        if (coreVitals.fid.rating === 'needs-improvement') score -= 5;
-        if (coreVitals.fid.rating === 'poor') score -= 10;
-        if (coreVitals.cls.rating === 'poor') score -= 5;
-
-        // Optimizations (15%)
-        const lazyPercentage = optimizations.images.lazy / optimizations.images.total;
+        // Optimizations (15%) - с защитой от деления на ноль
+        const imagesTotal = safeOptimizations.images?.total || 1;
+        const lazyPercentage = (safeOptimizations.images?.lazy || 0) / imagesTotal;
         if (lazyPercentage < 0.5) score -= 5;
         
-        const asyncPercentage = (optimizations.scripts.async + optimizations.scripts.defer) / optimizations.scripts.external;
+        const scriptsExternal = safeOptimizations.scripts?.external || 1;
+        const asyncDeferCount = (safeOptimizations.scripts?.async || 0) + (safeOptimizations.scripts?.defer || 0);
+        const asyncPercentage = asyncDeferCount / scriptsExternal;
         if (asyncPercentage < 0.3) score -= 5;
 
         return Math.max(0, Math.round(score));
@@ -477,7 +264,7 @@ export default class PerformanceAnalyzer {
         return 'F';
     }
 
-    generatePerformanceRecommendations(navigation, resources, coreVitals, optimizations) {
+    generatePerformanceRecommendations(navigation, resources, optimizations) {
         const recommendations = [];
 
         if (navigation.loadTime > 3000) {
@@ -487,11 +274,6 @@ export default class PerformanceAnalyzer {
         if (resources.totalSize > 2 * 1024 * 1024) {
             recommendations.push('Уменьшите общий размер ресурсов');
         }
-
-        if (coreVitals.lcp.rating !== 'good') {
-            recommendations.push('Улучшите Largest Contentful Paint');
-        }
-
         if (optimizations.images.lazy / optimizations.images.total < 0.5) {
             recommendations.push('Добавьте lazy loading для изображений');
         }
@@ -512,13 +294,6 @@ export default class PerformanceAnalyzer {
             firstPaint: 800,
             firstContentfulPaint: 900,
             firstMeaningfulPaint: 1200,
-            coreWebVitals: {
-                lcp: { value: 2100, rating: 'good', element: 'unknown' },
-                fid: { value: 80, rating: 'good' },
-                cls: { value: 0.05, rating: 'good' },
-                inp: { value: 150, rating: 'good' },
-                tbt: { value: 150, rating: 'good' }
-            },
             memory: {
                 usedJSHeapSize: 50,
                 totalJSHeapSize: 100,
@@ -535,17 +310,5 @@ export default class PerformanceAnalyzer {
             grade: 'B',
             recommendations: ['Продолжайте мониторить производительность']
         };
-    }
-
-    // Метод для очистки observers
-    disconnect() {
-        this.observers.forEach(observer => {
-            try {
-                observer.disconnect();
-            } catch (e) {
-                // Игнорируем ошибки при отключении
-            }
-        });
-        this.observers = [];
     }
 }

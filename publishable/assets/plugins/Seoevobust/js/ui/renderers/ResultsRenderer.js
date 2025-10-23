@@ -59,12 +59,12 @@ export default class ResultsRenderer {
                 </div>
                 
                 <div class="seo-navigation">
-                    <button class="nav-btn active" data-section="basic">📊 Базовые</button>
-                    <button class="nav-btn" data-section="content">📝 Контент</button>
-                    <button class="nav-btn" data-section="technical">⚙️ Технические</button>
-                    <button class="nav-btn" data-section="performance">🚀 Производительность</button>
-                    <button class="nav-btn" data-section="security">🔒 Безопасность</button>
-                    <button class="nav-btn" data-section="recommendations">💡 Рекомендации</button>
+                    <button class="nav-btn active" data-section="basic">Базовые</button>
+                    <button class="nav-btn" data-section="content">Контент</button>
+                    <button class="nav-btn" data-section="technical">Технические</button>
+                    <button class="nav-btn" data-section="performance">Производительность</button>
+                    <button class="nav-btn" data-section="security">Безопасность</button>
+                    <button class="nav-btn" data-section="recommendations">Рекомендации</button>
                 </div>
                 
                 <div class="seo-sections">
@@ -72,7 +72,7 @@ export default class ResultsRenderer {
                         ${this.basicRenderer.render(safeAnalysis.basic)}
                     </div>
                     <div class="seo-section" id="content-section" style="display: none;">
-                        ${this.contentRenderer.render(safeAnalysis.basic?.content, safeAnalysis.basic?.meta)}
+                        ${this.contentRenderer.render(safeAnalysis.basic?.content)}
                     </div>
                     <div class="seo-section" id="technical-section" style="display: none;">
                         ${this.technicalRenderer.render(safeAnalysis.basic?.technical)}
@@ -89,8 +89,8 @@ export default class ResultsRenderer {
                 </div>
                 
                 <div class="export-actions">
-                    <button class="export-btn" data-format="json">📥 Экспорт JSON</button>
-                    <button class="export-btn" data-format="html">📥 Экспорт HTML</button>
+                    <button class="export-btn" data-format="json">Экспорт JSON</button>
+                    <button class="export-btn" data-format="html">Экспорт HTML</button>
                 </div>
             </div>
         `;

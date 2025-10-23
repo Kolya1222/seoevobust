@@ -1732,7 +1732,7 @@ export default class ExportRenderer {
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>📊 Полный SEO Анализ</h1>
+                        <h1>Полный SEO Анализ</h1>
                         <div class="url">${analysis.url || window.location.href}</div>
                         <div style="margin-top: 15px; font-size: 0.9em;">
                             Сгенерировано: ${new Date().toLocaleString('ru-RU')}
@@ -1759,32 +1759,32 @@ export default class ExportRenderer {
                     </div>
                     
                     <div class="section">
-                        <h2>📊 Базовые SEO элементы</h2>
+                        <h2>Базовые SEO элементы</h2>
                         ${basicHtml}
                     </div>
                     
                     <div class="section">
-                        <h2>📝 Анализ контента</h2>
+                        <h2>Анализ контента</h2>
                         ${contentHtml}
                     </div>
                     
                     <div class="section">
-                        <h2>⚙️ Технический анализ</h2>
+                        <h2>Технический анализ</h2>
                         ${technicalHtml}
                     </div>
                     
                     <div class="section">
-                        <h2>🚀 Производительность</h2>
+                        <h2>Производительность</h2>
                         ${performanceHtml}
                     </div>
                     
                     <div class="section">
-                        <h2>🔒 Безопасность</h2>
+                        <h2>Безопасность</h2>
                         ${securityHtml}
                     </div>
                     
                     <div class="section">
-                        <h2>💡 Рекомендации по улучшению</h2>
+                        <h2>Рекомендации по улучшению</h2>
                         ${recommendationsHtml}
                     </div>
                     

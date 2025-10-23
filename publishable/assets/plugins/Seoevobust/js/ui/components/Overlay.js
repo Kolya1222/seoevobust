@@ -27,7 +27,7 @@ export default class Overlay {
         return `
             <div class="seo-analyzer-panel">
                 <div class="seo-analyzer-header">
-                    <h3>🔍 SEO Анализ страницы</h3>
+                    <h3>SEO Анализ страницы</h3>
                     <button class="seo-analyzer-close">&times;</button>
                 </div>
                 <div class="seo-analyzer-content">

@@ -8,7 +8,7 @@ export default class SecuritySectionRenderer {
         const vulnerabilities = security.vulnerabilities || [];
 
         return `
-            <h4>🔒 Расширенный анализ безопасности</h4>
+            <h4>Расширенный анализ безопасности</h4>
             
             <!-- Основные метрики -->
             <div class="metrics-grid">
@@ -47,7 +47,7 @@ export default class SecuritySectionRenderer {
     renderMixedContentSection(mixedContent) {
         return `
             <div class="section-card ${mixedContent.total === 0 ? 'good' : 'bad'}">
-                <h5>🚫 Mixed Content</h5>
+                <h5>Mixed Content</h5>
                 <div class="mixed-content-stats">
                     <div class="mixed-total">Всего проблем: <strong>${mixedContent.total}</strong></div>
                     ${mixedContent.total > 0 ? `
@@ -90,7 +90,7 @@ export default class SecuritySectionRenderer {
         
         return `
             <div class="section-card ${implementedHeaders >= 3 ? 'good' : 'warning'}">
-                <h5>🛡️ Заголовки безопасности</h5>
+                <h5>Заголовки безопасности</h5>
                 <div class="headers-stats">
                     Реализовано: <strong>${implementedHeaders}/6</strong>
                 </div>
@@ -110,7 +110,7 @@ export default class SecuritySectionRenderer {
     renderFormsSecuritySection(formsSecurity) {
         return `
             <div class="section-card ${formsSecurity.insecure === 0 ? 'good' : 'warning'}">
-                <h5>📝 Безопасность форм</h5>
+                <h5>Безопасность форм</h5>
                 <div class="forms-stats">
                     <div>Всего форм: <strong>${formsSecurity.total}</strong></div>
                     <div>Безопасные: <strong>${formsSecurity.secure}</strong></div>
@@ -139,7 +139,7 @@ export default class SecuritySectionRenderer {
     renderExternalResourcesSection(externalResources) {
         return `
             <div class="section-card ${externalResources.total < 15 ? 'good' : 'warning'}">
-                <h5>🌐 Внешние ресурсы</h5>
+                <h5>Внешние ресурсы</h5>
                 <div class="resources-stats">
                     <div>Всего: <strong>${externalResources.total}</strong></div>
                     <div>Скрипты: <strong>${externalResources.scripts.length}</strong></div>
@@ -175,7 +175,7 @@ export default class SecuritySectionRenderer {
         
         return `
             <div class="section-card ${securePercentage > 80 ? 'good' : 'warning'}">
-                <h5>🍪 Cookies</h5>
+                <h5>Cookies</h5>
                 <div class="cookies-stats">
                     <div>Всего cookies: <strong>${cookies.total}</strong></div>
                     <div>Secure: <strong>${cookies.secure} (${securePercentage}%)</strong></div>

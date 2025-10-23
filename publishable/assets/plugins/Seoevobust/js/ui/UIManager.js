@@ -48,9 +48,13 @@ export default class UIManager {
         this.isVisible = false;
     }
 
+    showLoading(message = 'Загрузка...') {
+        this.overlay.showLoading(message);
+        this.show(); // Показываем оверлей с индикатором
+    }
+
     showLoading() {
         this.overlay.showLoading();
-        this.show();
     }
 
     showError(message) {
@@ -59,18 +63,23 @@ export default class UIManager {
 
     async displayResults(analysis) {
         try {
-            // Показываем индикатор загрузки для производительности
-            this.overlay.showLoading('Анализ производительности...');
+            // ПОКАЗЫВАЕМ ЗАГРУЗКУ ПЕРЕД началом тяжелых операций
+            this.showLoading('Формирование отчета...');
+            
+            // Даем время отобразиться индикатору
+            await new Promise(resolve => setTimeout(resolve, 50));
             
             // Асинхронно получаем HTML
             const html = await this.renderer.generateResultsHtml(analysis);
             
-            // Отображаем результаты
+            // Скрываем индикатор и показываем результаты
+            this.showLoading();
             this.overlay.displayResults(html);
             this.show();
             
         } catch (error) {
             console.error('Error displaying results:', error);
+            this.showLoading();
             this.showError(`Ошибка при отображении результатов: ${error.message}`);
         }
     }

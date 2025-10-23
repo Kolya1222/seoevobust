@@ -1,22 +1,48 @@
 export default class ContentAnalyzer {
-    analyze(doc) {
-        const images = this.analyzeImages(doc);
-        const links = this.analyzeLinks(doc);
-        const headings = this.analyzeHeadings(doc);
-        const text = this.analyzeContent(doc);
-        const structure = this.analyzeStructure(doc);
-        const readability = this.analyzeReadability(doc);
-        const keywords = this.analyzeKeywords(doc);
-        const multimedia = this.analyzeMultimedia(doc);
+    constructor() {
+        // Паттерны для фильтрации технического контента
+        this.technicalPatterns = [
+            /function\s*\(/i,
+            /var\s+\w+\s*=/i,
+            /let\s+\w+\s*=/i,
+            /const\s+\w+\s*=/i,
+            /console\.log/i,
+            /document\./i,
+            /window\./i,
+            /\.addEventListener/i,
+            /setTimeout/i,
+            /setInterval/i,
+            /\.querySelector/i,
+            /\.getElementById/i,
+            /import\s+.*from/i,
+            /export\s+default/i,
+            /class\s+\w+/i,
+            /=>/,
+            /`[^`]*\$\{/,
+            /<\/?script/i,
+            /<\/?style/i
+        ];
+    }
 
-        const score = this.calculateContentScore(images, text, headings, links, readability, structure);
+    analyze(doc) {
+        // Создаем копию документа для анализа, исключая noindex контент
+        const analysisDoc = this.prepareDocumentForAnalysis(doc);
+        
+        const images = this.analyzeImages(analysisDoc);
+        const links = this.analyzeLinks(analysisDoc);
+        const headings = this.analyzeHeadings(analysisDoc);
+        const text = this.analyzeContent(analysisDoc);
+        const readability = this.analyzeReadability(analysisDoc);
+        const keywords = this.analyzeKeywords(analysisDoc);
+        const multimedia = this.analyzeMultimedia(analysisDoc);
+
+        const score = this.calculateContentScore(images, text, headings, links, readability);
 
         return {
             images: images,
             links: links,
             headings: headings,
             text: text,
-            structure: structure,
             readability: readability,
             keywords: keywords,
             multimedia: multimedia,
@@ -24,6 +50,241 @@ export default class ContentAnalyzer {
         };
     }
 
+    prepareDocumentForAnalysis(doc) {
+        // Создаем глубокую копию документа
+        const analysisDoc = doc.cloneNode(true);
+        
+        // Удаляем noindex контент
+        this.removeNoindexContent(analysisDoc);
+        
+        // Удаляем технический контент
+        this.removeTechnicalContent(analysisDoc);
+        
+        return analysisDoc;
+    }
+
+    removeNoindexContent(doc) {
+        // Удаляем элементы с noindex атрибутами
+        const noindexSelectors = [
+            '[noindex]',
+            '.noindex',
+            '[data-noindex]',
+            'noindex'
+        ];
+
+        noindexSelectors.forEach(selector => {
+            const elements = doc.querySelectorAll(selector);
+            elements.forEach(el => el.remove());
+        });
+
+        // Удаляем meta noindex
+        const metaNoindex = doc.querySelectorAll('meta[name="robots"][content*="noindex"], meta[name="googlebot"][content*="noindex"]');
+        metaNoindex.forEach(meta => {
+            const parent = meta.parentElement;
+            if (parent) {
+                parent.removeChild(meta);
+            }
+        });
+
+        // Удаляем комментарии noindex (если есть)
+        const comments = this.findComments(doc);
+        comments.forEach(comment => {
+            if (comment.nodeValue.includes('noindex') || comment.nodeValue.includes('NOINDEX')) {
+                comment.remove();
+            }
+        });
+    }
+
+    removeTechnicalContent(doc) {
+        // Удаляем script и style теги
+        const technicalTags = ['script', 'style', 'code', 'pre'];
+        
+        technicalTags.forEach(tag => {
+            const elements = doc.querySelectorAll(tag);
+            elements.forEach(el => {
+                // Проверяем, не является ли это критически важным контентом
+                if (!this.isImportantContent(el)) {
+                    el.remove();
+                }
+            });
+        });
+
+        // Удаляем элементы с техническим контентом
+        const allElements = doc.querySelectorAll('*');
+        allElements.forEach(el => {
+            if (this.containsTechnicalContent(el.textContent)) {
+                // Вместо полного удаления, очищаем текст или удаляем в зависимости от контекста
+                this.cleanTechnicalContent(el);
+            }
+        });
+    }
+
+    containsTechnicalContent(text) {
+        if (!text || text.trim().length === 0) return false;
+        
+        return this.technicalPatterns.some(pattern => 
+            pattern.test(text)
+        );
+    }
+
+    cleanTechnicalContent(element) {
+        const children = element.children;
+        
+        // Если у элемента есть дети, рекурсивно проверяем их
+        if (children.length > 0) {
+            Array.from(children).forEach(child => {
+                this.cleanTechnicalContent(child);
+            });
+        } else {
+            // Для текстовых элементов проверяем и очищаем контент
+            const text = element.textContent;
+            if (this.containsTechnicalContent(text)) {
+                // Заменяем технический контент на пустую строку
+                // или можно установить data-атрибут для отладки
+                element.textContent = this.filterTechnicalText(text);
+            }
+        }
+    }
+
+    filterTechnicalText(text) {
+        // Удаляем строки, содержащие технические паттерны
+        const lines = text.split('\n')
+            .filter(line => !this.containsTechnicalContent(line))
+            .filter(line => line.trim().length > 0);
+        
+        return lines.join('\n');
+    }
+
+    isImportantContent(element) {
+        // Проверяем, является ли контент важным (например, контент внутри main, article и т.д.)
+        const importantSelectors = [
+            'main', 'article', 'section', 
+            '[role="main"]', '.content', '#content'
+        ];
+        
+        return importantSelectors.some(selector => 
+            element.closest(selector) !== null
+        );
+    }
+
+    findComments(node) {
+        const comments = [];
+        
+        function traverse(currentNode) {
+            if (!currentNode) return;
+            
+            // Проверяем все дочерние узлы
+            currentNode.childNodes.forEach(child => {
+                if (child.nodeType === Node.COMMENT_NODE) {
+                    comments.push(child);
+                } else {
+                    traverse(child);
+                }
+            });
+        }
+        
+        traverse(node);
+        return comments;
+    }
+
+    // Модифицируем analyzeContent для использования очищенного документа
+    analyzeContent(doc) {
+        // Получаем только релевантные для SEO элементы
+        const seoElements = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, td, th, article, section, main, [role="main"]');
+        
+        let contentText = '';
+        let totalChars = 0;
+        let totalWords = 0;
+        let sentences = 0;
+        
+        seoElements.forEach(el => {
+            const text = el.textContent || '';
+            if (text.trim().length > 0 && !this.containsTechnicalContent(text)) {
+                contentText += text + ' ';
+                totalChars += text.length;
+                
+                const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+                totalWords += words.length;
+                
+                const sentenceCount = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+                sentences += sentenceCount;
+            }
+        });
+
+        const paragraphs = doc.querySelectorAll('p');
+        const lists = doc.querySelectorAll('ul, ol');
+        const tables = doc.querySelectorAll('table');
+
+        // Фильтруем параграфы, исключая технические
+        const filteredParagraphs = Array.from(paragraphs).filter(p => 
+            !this.containsTechnicalContent(p.textContent)
+        );
+
+        const contentWords = contentText.split(/\s+/).filter(word => word.length > 0);
+
+        return {
+            textAnalysis: {
+                totalChars: totalChars,
+                totalWords: totalWords,
+                contentWords: contentWords.length,
+                sentences: sentences,
+                paragraphs: filteredParagraphs.length,
+                lists: lists.length,
+                tables: tables.length,
+                readingTime: Math.ceil(totalWords / 200),
+                avgSentenceLength: sentences > 0 ? Math.round(totalWords / sentences) : 0,
+                avgParagraphLength: filteredParagraphs.length > 0 ? Math.round(contentWords.length / filteredParagraphs.length) : 0,
+                filteredTechnicalContent: true // Флаг что контент был отфильтрован
+            }
+        };
+    }
+
+    // Модифицируем analyzeKeywords для исключения технических слов
+    analyzeKeywords(doc) {
+        const seoElements = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, article, section');
+        
+        let allText = '';
+        seoElements.forEach(el => {
+            const text = el.textContent || '';
+            if (text.trim().length > 0 && !this.containsTechnicalContent(text)) {
+                allText += text + ' ';
+            }
+        });
+
+        const words = allText.toLowerCase()
+            .split(/\s+/)
+            .filter(word => word.length > 3)
+            .filter(word => !this.isTechnicalWord(word));
+        
+        const wordFreq = {};
+        words.forEach(word => {
+            wordFreq[word] = (wordFreq[word] || 0) + 1;
+        });
+        
+        const topWords = Object.entries(wordFreq)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([word, count]) => ({ word, count }));
+
+        return {
+            topWords: topWords,
+            uniqueWords: Object.keys(wordFreq).length,
+            totalWords: words.length,
+            filtered: true
+        };
+    }
+
+    isTechnicalWord(word) {
+        const technicalWords = [
+            'function', 'var', 'let', 'const', 'console', 'document', 
+            'window', 'queryselector', 'addeventlistener', 'settimeout',
+            'setinterval', 'import', 'export', 'class', 'return', 'if',
+            'else', 'for', 'while', 'switch', 'case', 'default'
+        ];
+        
+        return technicalWords.includes(word.toLowerCase());
+    }
+    
     analyzeImages(doc) {
         const images = doc.querySelectorAll('img');
         let withAlt = 0;
@@ -227,27 +488,86 @@ export default class ContentAnalyzer {
         const words = textContent.trim().split(/\s+/).filter(word => word.length > 0);
         const sentences = textContent.split(/[.!?]+/).filter(s => s.trim().length > 0);
         
-        // Простой расчет индекса удобочитаемости
-        const avgWordsPerSentence = sentences.length > 0 ? words.length / sentences.length : 0;
-        const avgCharsPerWord = words.length > 0 ? textContent.length / words.length : 0;
-        
-        let readabilityScore = 0;
-        if (avgWordsPerSentence < 15 && avgCharsPerWord < 5) {
-            readabilityScore = 90; // Очень легко
-        } else if (avgWordsPerSentence < 20 && avgCharsPerWord < 6) {
-            readabilityScore = 70; // Легко
-        } else if (avgWordsPerSentence < 25 && avgCharsPerWord < 7) {
-            readabilityScore = 50; // Средне
-        } else {
-            readabilityScore = 30; // Сложно
+        if (words.length === 0 || sentences.length === 0) {
+            return {
+                score: 0,
+                level: 'Недостаточно текста',
+                gunningFogIndex: 0,
+                avgWordsPerSentence: 0,
+                avgCharsPerWord:0,
+                complexWordsPercentage: 0,
+                totalSentences: 0,
+                totalWords: 0
+            };
         }
 
+        const avgWordsPerSentence = words.length / sentences.length;
+        
+        // Считаем "сложные" слова (с 3+ слогами)
+        const complexWords = words.filter(word => this.countSyllables(word) >= 3);
+        const complexWordsPercentage = complexWords.length / words.length;
+        
+        // Рассчитываем индекс туманности Ганнинга
+        const gunningFogIndex = this.calculateGunningFogIndex(avgWordsPerSentence, complexWordsPercentage);
+        
+        // Конвертируем в 100-балльную шкалу (чем ниже индекс - тем лучше читаемость)
+        const readabilityScore = this.convertFogToScore(gunningFogIndex);
+        const avgCharsPerWordlocal = words.reduce((sum, word) => sum + word.length, 0);
+        const averageWordLength = words.length > 0 ? (avgCharsPerWordlocal / words.length) : 0;
         return {
-            score: readabilityScore,
+            score: Math.max(0, Math.min(100, Math.round(readabilityScore))),
             level: this.getReadabilityLevel(readabilityScore),
+            gunningFogIndex: Math.round(gunningFogIndex * 10) / 10,
             avgWordsPerSentence: Math.round(avgWordsPerSentence * 10) / 10,
-            avgCharsPerWord: Math.round(avgCharsPerWord * 10) / 10
+            avgCharsPerWord:Math.round(averageWordLength * 10) / 10,
+            complexWordsPercentage: Math.round(complexWordsPercentage * 100),
+            complexWordsCount: complexWords.length,
+            totalSentences: sentences.length,
+            totalWords: words.length,
+            interpretation: this.getFogInterpretation(gunningFogIndex)
         };
+    }
+
+    calculateGunningFogIndex(avgWordsPerSentence, complexWordsPercentage) {
+        // Формула индекса туманности Ганнинга: 0.4 * (средняя длина предложения + процент сложных слов)
+        return 0.4 * (avgWordsPerSentence + 100 * complexWordsPercentage);
+    }
+
+    convertFogToScore(gunningFogIndex) {
+        // Конвертируем индекс Ганнинга в 100-балльную шкалу
+        // Чем ниже индекс - тем лучше читаемость
+        
+        if (gunningFogIndex <= 6) return 95;  // Очень легко
+        if (gunningFogIndex <= 8) return 85;  // Легко
+        if (gunningFogIndex <= 10) return 75; // Достаточно легко
+        if (gunningFogIndex <= 12) return 65; // Средне
+        if (gunningFogIndex <= 14) return 55; // Достаточно сложно
+        if (gunningFogIndex <= 16) return 45; // Сложно
+        if (gunningFogIndex <= 18) return 35; // Очень сложно
+        return 25; // Крайне сложно
+    }
+
+    countSyllables(word) {
+        // Упрощенный подсчет слогов для русского языка
+        const vowels = 'аеёиоуыэюя';
+        let syllables = 0;
+        let prevCharWasVowel = false;
+        
+        // Приводим к нижнему регистру и убираем лишние символы
+        const cleanWord = word.toLowerCase().replace(/[^а-яё]/g, '');
+        
+        if (cleanWord.length === 0) return 0;
+        
+        for (let char of cleanWord) {
+            const isVowel = vowels.includes(char);
+            if (isVowel && !prevCharWasVowel) {
+                syllables++;
+            }
+            prevCharWasVowel = isVowel;
+        }
+        
+        // Минимум 1 слог для слов с согласными
+        return syllables > 0 ? syllables : 1;
     }
 
     getReadabilityLevel(score) {
@@ -256,6 +576,16 @@ export default class ContentAnalyzer {
         if (score >= 40) return 'Средне';
         if (score >= 20) return 'Сложно';
         return 'Очень сложно';
+    }
+
+    getFogInterpretation(gunningFogIndex) {
+        if (gunningFogIndex <= 6) return 'Текст для 6 класса (очень легко)';
+        if (gunningFogIndex <= 8) return 'Текст для 8 класса (легко)';
+        if (gunningFogIndex <= 10) return 'Текст для 10 класса (достаточно легко)';
+        if (gunningFogIndex <= 12) return 'Текст для 12 класса (средне)';
+        if (gunningFogIndex <= 14) return 'Текст для студента (сложно)';
+        if (gunningFogIndex <= 16) return 'Текст для выпускника (очень сложно)';
+        return 'Текст для эксперта (крайне сложно)';
     }
 
     analyzeKeywords(doc) {
@@ -320,19 +650,6 @@ export default class ContentAnalyzer {
         return 'Other';
     }
 
-    analyzeStructure(doc) {
-        const structure = {
-            header: doc.querySelector('header') ? '✅' : '❌',
-            nav: doc.querySelector('nav') ? '✅' : '❌',
-            main: doc.querySelector('main') ? '✅' : '❌',
-            footer: doc.querySelector('footer') ? '✅' : '❌',
-            semantic: this.analyzeSemanticElements(doc),
-            breadcrumbs: this.analyzeBreadcrumbs(doc)
-        };
-        
-        return structure;
-    }
-
     analyzeSemanticElements(doc) {
         const semanticTags = ['header', 'nav', 'main', 'footer', 'article', 'section', 'aside', 'figure', 'figcaption'];
         const result = {};
@@ -350,7 +667,7 @@ export default class ContentAnalyzer {
         };
     }
 
-    calculateContentScore(images, text, headings, links, readability, structure) {
+    calculateContentScore(images, text, headings, links, readability) {
         let score = 0;
         
         // Изображения (макс 20)
@@ -370,11 +687,8 @@ export default class ContentAnalyzer {
         if (links.brokenPercentage < 10) score += 10;
         if (links.internal > 0) score += 5;
         
-        // Читаемость (макс 10)
-        if (readability.score > 60) score += 10;
-        
-        // Структура (макс 5)
-        if (structure.header === '✅' && structure.footer === '✅') score += 5;
+        // Читаемость (макс 15)
+        if (readability.score > 60) score += 15;
 
         return Math.min(score, 100);
     }

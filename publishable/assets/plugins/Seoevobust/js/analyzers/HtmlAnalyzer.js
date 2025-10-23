@@ -1,13 +1,11 @@
 import BasicElementsAnalyzer from './htmlanalyzer/BasicElementsAnalyzer.js';
 import ContentAnalyzer from './htmlanalyzer/ContentAnalyzer.js';
-import MetaTagsAnalyzer from './htmlanalyzer/MetaTagsAnalyzer.js';
 import TechnicalAnalyzer from './htmlanalyzer/TechnicalAnalyzer.js';
 
 export default class HtmlAnalyzer {
     constructor() {
         this.basicAnalyzer = new BasicElementsAnalyzer();
         this.contentAnalyzer = new ContentAnalyzer();
-        this.metaAnalyzer = new MetaTagsAnalyzer();
         this.technicalAnalyzer = new TechnicalAnalyzer();
     }
 
@@ -17,22 +15,20 @@ export default class HtmlAnalyzer {
 
         const basicAnalysis = this.basicAnalyzer.analyze(doc);
         const contentAnalysis = this.contentAnalyzer.analyze(doc);
-        const metaAnalysis = this.metaAnalyzer.analyze(doc);
         const technicalAnalysis = this.technicalAnalyzer.analyze(doc);
 
         return {
             basic: basicAnalysis,
             content: contentAnalysis,
-            meta: metaAnalysis,
             technical: technicalAnalysis,
-            score: this.calculateHtmlScore(basicAnalysis, contentAnalysis)
+            score: this.calculateHtmlScore(basicAnalysis, contentAnalysis, technicalAnalysis)
         };
     }
 
-    calculateHtmlScore(basic, content) {
+    calculateHtmlScore(basic, content, technical) {
         const basicScore = basic.score || 0;
         const contentScore = content.score || 0;
-        
-        return Math.round((basicScore + contentScore) / 2);
+        const technicalScore = technical.score || 0;
+        return Math.round((basicScore + contentScore + technicalScore) / 3);
     }
 }

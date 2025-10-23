@@ -1,6 +1,6 @@
 export default class TechnicalAnalyzer {
     analyze(doc, url) {
-        return {
+        const analyses = {
             language: this.analyzeLanguage(doc),
             favicon: this.analyzeFavicon(doc),
             schema: this.analyzeSchemaMarkup(doc),
@@ -14,6 +14,274 @@ export default class TechnicalAnalyzer {
             accessibility: this.analyzeAccessibility(doc),
             seo: this.analyzeTechnicalSEO(doc, url)
         };
+
+        // Добавляем общую оценку
+        const overallScore = this.calculateOverallScore(analyses);
+
+        return {
+            ...analyses,
+            score: overallScore,
+            grade: this.getTechnicalGrade(overallScore),
+            recommendations: this.generateTechnicalRecommendations(analyses)
+        };
+    }
+
+    calculateOverallScore(analyses) {
+        const weights = {
+            language: 0.08,        // Язык документа
+            favicon: 0.05,         // Фавикон
+            schema: 0.15,          // Schema markup
+            structure: 0.12,       // Структура HTML
+            performance: 0.10,     // Технические аспекты производительности
+            security: 0.10,        // Безопасность
+            metaTags: 0.12,        // Мета-теги
+            scripts: 0.08,         // Скрипты
+            links: 0.05,           // Технические ссылки
+            accessibility: 0.08,   // Доступность
+            seo: 0.07              // Техническое SEO
+        };
+
+        const scores = {
+            language: this.calculateLanguageScore(analyses.language),
+            favicon: this.calculateFaviconScore(analyses.favicon),
+            schema: this.calculateSchemaScore(analyses.schema),
+            structure: analyses.structure.score,
+            performance: this.calculatePerformanceScore(analyses.performance),
+            security: this.calculateSecurityScore(analyses.security),
+            metaTags: this.calculateMetaTagsScore(analyses.metaTags),
+            scripts: this.calculateScriptsScore(analyses.scripts),
+            links: this.calculateLinksScore(analyses.links),
+            accessibility: this.calculateAccessibilityScore(analyses.accessibility),
+            seo: this.calculateTechnicalSEOScore(analyses.seo)
+        };
+
+        // Вычисляем общий взвешенный балл
+        let totalScore = 0;
+        Object.entries(weights).forEach(([category, weight]) => {
+            totalScore += scores[category] * weight;
+        });
+
+        return Math.max(0, Math.min(100, Math.round(totalScore)));
+    }
+
+    // 🔧 Методы расчета оценок для каждой категории
+
+    calculateLanguageScore(languageAnalysis) {
+        let score = 0;
+        if (languageAnalysis.exists) score += 70;
+        if (languageAnalysis.valid) score += 30;
+        return score;
+    }
+
+    calculateFaviconScore(faviconAnalysis) {
+        if (!faviconAnalysis.exists) return 0;
+        let score = 50; // Базовый балл за наличие
+        
+        if (faviconAnalysis.hasAppleTouch) score += 25;
+        if (faviconAnalysis.count > 1) score += 15; // Несколько размеров
+        if (faviconAnalysis.icons.some(icon => icon.sizes)) score += 10;
+        
+        return Math.min(score, 100);
+    }
+
+    calculateSchemaScore(schemaAnalysis) {
+        if (schemaAnalysis.count === 0) return 0;
+        
+        let score = 0;
+        
+        // Баллы за количество и валидность
+        score += Math.min(schemaAnalysis.validCount * 15, 40);
+        
+        // Баллы за покрытие важных типов
+        const essentialTypes = ['Organization', 'WebSite', 'BreadcrumbList'];
+        const foundEssential = essentialTypes.filter(type => 
+            schemaAnalysis.foundCommonTypes.includes(type)
+        ).length;
+        
+        score += foundEssential * 20;
+        
+        // Бонус за разнообразие
+        if (schemaAnalysis.diversity >= 3) score += 10;
+        
+        return Math.min(score, 100);
+    }
+
+    calculatePerformanceScore(performanceAnalysis) {
+        let score = 100;
+        
+        // Штрафы за проблемы с производительностью
+        const scripts = performanceAnalysis.scripts;
+        const styles = performanceAnalysis.styles;
+        const images = performanceAnalysis.images;
+        
+        // Синхронные скрипты
+        if (scripts.sync > 3) score -= 10;
+        if (scripts.sync > 5) score -= 10;
+        
+        // Внешние стили
+        if (styles.external > 5) score -= 5;
+        
+        // Изображения без размеров
+        const imagesWithoutDimensions = images.count - images.withDimensions;
+        if (imagesWithoutDimensions > 5) score -= 10;
+        
+        // Изображения без lazy loading
+        if (images.lazy / images.count < 0.3) score -= 10;
+        
+        return Math.max(0, score);
+    }
+
+    calculateSecurityScore(securityAnalysis) {
+        let score = 100;
+        
+        // CSP
+        if (!securityAnalysis.csp.exists) score -= 20;
+        
+        // Небезопасные формы
+        const insecureForms = securityAnalysis.forms.count - securityAnalysis.forms.secure;
+        if (insecureForms > 0) score -= insecureForms * 5;
+        
+        // Внешние скрипты
+        if (securityAnalysis.externalScripts.count > 10) score -= 10;
+        
+        return Math.max(0, score);
+    }
+
+    calculateMetaTagsScore(metaTagsAnalysis) {
+        let score = 0;
+        
+        // Базовые мета-теги
+        if (metaTagsAnalysis.basic.viewport) score += 20;
+        if (metaTagsAnalysis.basic.description) score += 15;
+        if (metaTagsAnalysis.basic.robots) score += 10;
+        
+        // Open Graph
+        if (metaTagsAnalysis.hasOG) score += 25;
+        
+        // Twitter Cards
+        if (metaTagsAnalysis.hasTwitter) score += 15;
+        
+        // Дополнительные баллы за полноту
+        const ogTags = Object.keys(metaTagsAnalysis.openGraph).length;
+        if (ogTags >= 4) score += 15;
+        
+        return Math.min(score, 100);
+    }
+
+    calculateScriptsScore(scriptsAnalysis) {
+        let score = 100;
+        
+        // Штрафы за проблемы со скриптами
+        if (scriptsAnalysis.inline > 5) score -= 10;
+        if (scriptsAnalysis.external > 15) score -= 10;
+        
+        // Бонусы за оптимизации
+        const totalScripts = scriptsAnalysis.total;
+        if (totalScripts > 0) {
+            const asyncDeferRatio = (scriptsAnalysis.async + scriptsAnalysis.defer) / totalScripts;
+            if (asyncDeferRatio > 0.5) score += 10;
+        }
+        
+        return Math.max(0, Math.min(100, score));
+    }
+
+    calculateLinksScore(linksAnalysis) {
+        let score = 0;
+        
+        if (linksAnalysis.hasCanonical) score += 30;
+        if (linksAnalysis.hasPreload) score += 20;
+        if (linksAnalysis.hasPreconnect) score += 15;
+        if (linksAnalysis.hasDNS) score += 10;
+        
+        // Бонус за разнообразие типов ссылок
+        const linkTypesCount = Object.keys(linksAnalysis.types).length;
+        if (linkTypesCount >= 3) score += 25;
+        
+        return Math.min(score, 100);
+    }
+
+    calculateAccessibilityScore(accessibilityAnalysis) {
+        let score = 0;
+        
+        // Изображения с alt
+        if (accessibilityAnalysis.images.total > 0) {
+            const altRatio = accessibilityAnalysis.images.withAlt / accessibilityAnalysis.images.total;
+            score += Math.round(altRatio * 40);
+        }
+        
+        // Формы с labels
+        if (accessibilityAnalysis.forms.total > 0) {
+            const labelsRatio = accessibilityAnalysis.forms.withLabels / accessibilityAnalysis.forms.total;
+            score += Math.round(labelsRatio * 30);
+        }
+        
+        // Лендмарки
+        const landmarks = accessibilityAnalysis.landmarks;
+        const landmarkCount = Object.values(landmarks).filter(Boolean).length;
+        score += landmarkCount * 10;
+        
+        // Язык
+        if (accessibilityAnalysis.language.defined) score += 10;
+        
+        return Math.min(score, 100);
+    }
+
+    calculateTechnicalSEOScore(seoAnalysis) {
+        let score = 0;
+        
+        if (seoAnalysis.canonical.exists) score += 30;
+        if (seoAnalysis.canonical.matchesCurrent) score += 20;
+        
+        if (seoAnalysis.robots.exists) score += 15;
+        if (seoAnalysis.robots.allowsIndex) score += 15;
+        
+        if (seoAnalysis.hreflang.exists) score += 20;
+        
+        return Math.min(score, 100);
+    }
+
+    getTechnicalGrade(score) {
+        if (score >= 90) return 'A';
+        if (score >= 80) return 'B';
+        if (score >= 70) return 'C';
+        if (score >= 60) return 'D';
+        return 'F';
+    }
+
+    generateTechnicalRecommendations(analyses) {
+        const recommendations = [];
+        
+        // Язык
+        if (!analyses.language.exists) {
+            recommendations.push('Добавьте атрибут lang к тегу <html>');
+        }
+        
+        // Schema markup
+        if (analyses.schema.count === 0) {
+            recommendations.push('Добавьте schema markup для улучшения SEO');
+        } else if (analyses.schema.validCount < analyses.schema.count) {
+            recommendations.push('Исправьте ошибки в schema markup');
+        }
+        
+        // Структура
+        if (!analyses.structure.header.exists) {
+            recommendations.push('Добавьте семантический <header>');
+        }
+        if (!analyses.structure.main.exists) {
+            recommendations.push('Добавьте семантический <main>');
+        }
+        
+        // Безопасность
+        if (!analyses.security.csp.exists) {
+            recommendations.push('Рассмотрите добавление Content Security Policy');
+        }
+        
+        // Open Graph
+        if (!analyses.metaTags.hasOG) {
+            recommendations.push('Добавьте Open Graph разметку для социальных сетей');
+        }
+        
+        return recommendations.slice(0, 5); // Ограничиваем 5 рекомендациями
     }
 
     analyzeLanguage(doc) {
@@ -273,6 +541,7 @@ export default class TechnicalAnalyzer {
                 value: meta ? meta.getAttribute('content') : ''
             },
             forms: {
+                count: forms.length,
                 secure: Array.from(forms).filter(form => {
                     const action = form.getAttribute('action') || '';
                     return action.startsWith('https://') || action.startsWith('//') || !action.includes('http');

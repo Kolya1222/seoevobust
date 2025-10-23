@@ -1,5 +1,5 @@
 export default class ContentSectionRenderer {
-    render(content, meta) {
+    render(content) {
         const images = content?.images || {};
         const links = content?.links || {};
         const textAnalysis = content?.text?.textAnalysis || {};
@@ -7,16 +7,23 @@ export default class ContentSectionRenderer {
         const readability = content?.readability || {};
         const keywords = content?.keywords || {};
         const multimedia = content?.multimedia || {};
-        const structure = content?.structure || {};
 
         return `
-            <h4>📝 Расширенный анализ контента</h4>
+            <h4>Расширенный анализ контента</h4>
+            
+            <!-- Информация о фильтрации -->
+            ${textAnalysis.filteredTechnicalContent || keywords.filtered ? `
+                <div class="filter-info">
+                    <small>⚠️ Анализ выполнен с фильтрацией технического контента и noindex-элементов</small>
+                </div>
+            ` : ''}
             
             <!-- Основная статистика -->
             <div class="content-stats">
                 <div class="stat-item">
                     <div class="stat-value">${textAnalysis.contentWords || 0}</div>
                     <div class="stat-label">Слов контента</div>
+                    ${textAnalysis.filteredTechnicalContent ? '<div class="stat-note">(очищено)</div>' : ''}
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${textAnalysis.readingTime || 0} мин</div>
@@ -50,7 +57,7 @@ export default class ContentSectionRenderer {
                     'Структурные элементы', headings.h2?.count > 0)}
                 
                 ${this.renderMetricCard('Внутренние ссылки', links.internal || 0, 
-                    `${Math.round((links.internal / links.total) * 100) || 0}% от всех`, links.internal > 0)}
+                    `${links.total ? Math.round((links.internal / links.total) * 100) : 0}% от всех`, links.internal > 0)}
             </div>
             
             <!-- Детальные секции -->
@@ -61,10 +68,7 @@ export default class ContentSectionRenderer {
                 ${this.renderImagesSection(images)}
                 ${this.renderKeywordsSection(keywords)}
                 ${this.renderMultimediaSection(multimedia)}
-                ${this.renderStructureSection(structure)}
             </div>
-            
-            ${this.renderOpenGraphSection(meta)}
         `;
     }
 
@@ -86,7 +90,7 @@ export default class ContentSectionRenderer {
 
         let html = `
             <div class="section-card">
-                <h5>📑 Иерархия заголовков</h5>
+                <h5>Иерархия заголовков</h5>
                 <div class="headings-hierarchy ${headings.validHierarchy ? 'valid' : 'invalid'}">
                     <div class="hierarchy-status">
                         ${headings.validHierarchy ? '✅ Правильная иерархия' : '⚠️ Нарушена иерархия'}
@@ -117,11 +121,12 @@ export default class ContentSectionRenderer {
     renderReadabilitySection(readability, textAnalysis) {
         return `
             <div class="section-card">
-                <h5>📖 Анализ читаемости</h5>
+                <h5>Анализ читаемости</h5>
                 <div class="readability-info">
                     <div class="readability-score ${readability.score > 60 ? 'good' : 'warning'}">
                         <div class="score-value">${readability.score}/100</div>
                         <div class="score-label">${readability.level}</div>
+                        <div class="score-label">${readability.interpretation}</div>
                     </div>
                     <div class="readability-details">
                         <div>Средняя длина предложения: <strong>${readability.avgWordsPerSentence} слов</strong></div>
@@ -137,7 +142,7 @@ export default class ContentSectionRenderer {
     renderLinksSection(links) {
         return `
             <div class="section-card">
-                <h5>🔗 Анализ ссылок</h5>
+                <h5>Анализ ссылок</h5>
                 <div class="links-distribution">
                     <div class="link-type">
                         <span class="type-label">Внутренние:</span>
@@ -163,7 +168,7 @@ export default class ContentSectionRenderer {
 
         return `
             <div class="section-card">
-                <h5>🖼️ Анализ изображений</h5>
+                <h5>Анализ изображений</h5>
                 <div class="images-stats">
                     <div>Всего: <strong>${images.total || 0}</strong></div>
                     <div>С размерами: <strong>${images.withDimensions || 0} (${images.dimensionsPercentage || 0}%)</strong></div>
@@ -179,7 +184,7 @@ export default class ContentSectionRenderer {
         
         return `
             <div class="section-card">
-                <h5>🔤 Ключевые слова</h5>
+                <h5>Ключевые слова ${keywords.filtered ? ' (очищены)' : ''}</h5>
                 <div class="keywords-list">
                     ${topWords.length > 0 ? 
                         topWords.map(word => `
@@ -193,10 +198,12 @@ export default class ContentSectionRenderer {
                 </div>
                 <div class="keywords-meta">
                     Уникальных слов: ${keywords.uniqueWords || 0}
+                    ${keywords.filtered ? ' (после фильтрации)' : ''}
                 </div>
             </div>
         `;
     }
+
 
     renderMultimediaSection(multimedia) {
         if (multimedia.videos === 0 && multimedia.audios === 0 && multimedia.iframes === 0) {
@@ -205,63 +212,11 @@ export default class ContentSectionRenderer {
 
         return `
             <div class="section-card">
-                <h5>🎬 Мультимедиа</h5>
+                <h5>Мультимедиа</h5>
                 <div class="multimedia-stats">
                     <div>Видео: <strong>${multimedia.videos || 0}</strong></div>
                     <div>Аудио: <strong>${multimedia.audios || 0}</strong></div>
                     <div>Встроенный контент: <strong>${multimedia.iframes || 0}</strong></div>
-                </div>
-            </div>
-        `;
-    }
-
-    renderStructureSection(structure) {
-        const semanticElements = Object.entries(structure.semantic || {})
-            .filter(([_, count]) => count > 0)
-            .map(([tag, count]) => `${tag}: ${count}`)
-            .join(', ');
-
-        return `
-            <div class="section-card">
-                <h5>🏗️ Структура страницы</h5>
-                <div class="structure-elements">
-                    <div class="structure-item">
-                        <span>Header:</span> <strong>${structure.header}</strong>
-                    </div>
-                    <div class="structure-item">
-                        <span>Main:</span> <strong>${structure.main}</strong>
-                    </div>
-                    <div class="structure-item">
-                        <span>Footer:</span> <strong>${structure.footer}</strong>
-                    </div>
-                    <div class="structure-item">
-                        <span>Breadcrumbs:</span> <strong>${structure.breadcrumbs?.exists ? '✅' : '❌'}</strong>
-                    </div>
-                </div>
-                ${semanticElements ? `
-                    <div class="semantic-elements">
-                        Семантические теги: <strong>${semanticElements}</strong>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-
-    renderOpenGraphSection(meta) {
-        if (!meta?.og || Object.keys(meta.og).length === 0) {
-            return '<div class="section-card warning">Open Graph теги не найдены</div>';
-        }
-
-        return `
-            <div class="section-card">
-                <h5>📱 Open Graph теги</h5>
-                <div class="og-tags">
-                    ${Object.entries(meta.og).map(([key, value]) => `
-                        <div class="og-tag">
-                            <span class="og-key">${key}:</span>
-                            <span class="og-value">${value || 'Не задан'}</span>
-                        </div>
-                    `).join('')}
                 </div>
             </div>
         `;

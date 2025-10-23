@@ -130,21 +130,6 @@ export default class BasicElementsAnalyzer {
         };
     }
 
-    analyzeOpenGraph(doc) {
-        const og = {};
-        const properties = ['title', 'description', 'type', 'image'];
-        
-        properties.forEach(prop => {
-            const meta = doc.querySelector(`meta[property="og:${prop}"]`);
-            og[prop] = {
-                exists: !!meta,
-                value: meta ? meta.getAttribute('content') : 'Не задан'
-            };
-        });
-        
-        return og;
-    }
-
     calculateBasicScore(title, description, h1, viewport, lang, canonical, robots) {
         let score = 0;
 
