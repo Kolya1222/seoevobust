@@ -919,8 +919,8 @@ export default class TechnicalAnalyzer {
             recommendations.push({
                 id: 'tech-no-header',
                 title: 'Отсутствует семантический header',
-                description: 'Страница не использует тег <header> для шапки сайта.',
-                suggestion: 'Замените div на семантический тег <header> для улучшения доступности.',
+                description: 'Страница не использует тег header для шапки сайта.',
+                suggestion: 'Замените div на семантический тег header для улучшения доступности.',
                 priority: 'warning',
                 impact: 6,
                 category: 'semantics'
@@ -931,8 +931,8 @@ export default class TechnicalAnalyzer {
             recommendations.push({
                 id: 'tech-no-main',
                 title: 'Отсутствует семантический main',
-                description: 'Страница не использует тег <main> для основного контента.',
-                suggestion: 'Оберните основной контент в тег <main> для улучшения доступности и SEO.',
+                description: 'Страница не использует тег main для основного контента.',
+                suggestion: 'Оберните основной контент в тег main для улучшения доступности и SEO.',
                 priority: 'warning',
                 impact: 6,
                 category: 'semantics'
@@ -943,8 +943,8 @@ export default class TechnicalAnalyzer {
             recommendations.push({
                 id: 'tech-no-nav',
                 title: 'Отсутствует семантическая навигация',
-                description: 'Страница не использует тег <nav> для навигационных элементов.',
-                suggestion: 'Оберните навигационные меню в тег <nav>.',
+                description: 'Страница не использует тег nav для навигационных элементов.',
+                suggestion: 'Оберните навигационные меню в тег nav.',
                 priority: 'info',
                 impact: 5,
                 category: 'semantics'
