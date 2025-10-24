@@ -28,10 +28,6 @@ export default class ExportRenderer {
             content = await this.generateExportHtml(analysis);
             mimeType = 'text/html';
             filename = `seo-analysis-${new Date().toISOString().split('T')[0]}.html`;
-        } else if (format === 'txt') {
-            content = this.generateExportText(analysis);
-            mimeType = 'text/plain';
-            filename = `seo-analysis-${new Date().toISOString().split('T')[0]}.txt`;
         }
         
         this.downloadFile(content, mimeType, filename);
@@ -51,7 +47,7 @@ export default class ExportRenderer {
 
     async generateExportHtml(analysis) {
         const basicHtml = this.basicRenderer.render(analysis?.basic || {});
-        const contentHtml = this.contentRenderer.render(analysis.basic?.content, analysis.basic?.meta);
+        const contentHtml = this.contentRenderer.render(analysis.basic?.content);
         const technicalHtml = this.technicalRenderer.render(analysis.basic?.technical);
         const performanceHtml = await this.performanceRenderer.render(analysis.performance);
         const securityHtml = this.securityRenderer.render(analysis.security);
@@ -1796,45 +1792,6 @@ export default class ExportRenderer {
             </body>
             </html>
         `;
-    }
-
-    generateExportText(analysis) {
-        let text = `SEO АНАЛИЗ ОТЧЕТ\n`;
-        text += `================\n\n`;
-        text += `URL: ${analysis.url || window.location.href}\n`;
-        text += `Дата анализа: ${new Date().toLocaleString('ru-RU')}\n`;
-        text += `Общий балл: ${analysis.score}%\n\n`;
-        
-        text += `БАЗОВЫЕ ЭЛЕМЕНТЫ:\n`;
-        text += `----------------\n`;
-        text += `Заголовок: ${analysis.basic?.basic?.title?.value || 'Не задан'}\n`;
-        text += `Описание: ${analysis.basic?.basic?.description?.value || 'Не задан'}\n`;
-        text += `H1 заголовков: ${analysis.basic?.basic?.h1?.count || 0}\n`;
-        text += `Балл: ${analysis.basic?.basic?.score || 0}%\n\n`;
-        
-        text += `ПРОИЗВОДИТЕЛЬНОСТЬ:\n`;
-        text += `------------------\n`;
-        text += `Время загрузки: ${analysis.performance?.loadTime || 0}ms\n`;
-        text += `Размер страницы: ${Math.round((analysis.performance?.pageSize || 0) / 1024)}KB\n`;
-        text += `Запросов: ${analysis.performance?.requests || 0}\n`;
-        text += `Балл: ${analysis.performance?.score || 0}%\n\n`;
-        
-        text += `БЕЗОПАСНОСТЬ:\n`;
-        text += `------------\n`;
-        text += `HTTPS: ${analysis.security?.https ? 'Да' : 'Нет'}\n`;
-        text += `Mixed Content: ${analysis.security?.mixedContent?.total || 0} проблем\n`;
-        text += `Балл: ${analysis.security?.score || 0}%\n\n`;
-        
-        text += `РЕКОМЕНДАЦИИ:\n`;
-        text += `-------------\n`;
-        const recommendations = analysis.recommendations || [];
-        recommendations.forEach((rec, index) => {
-            text += `${index + 1}. [${rec.priority?.toUpperCase()}] ${rec.title}\n`;
-            text += `    ${rec.description}\n`;
-            text += `    Решение: ${rec.suggestion}\n\n`;
-        });
-        
-        return text;
     }
 
     getScoreClass(score) {
