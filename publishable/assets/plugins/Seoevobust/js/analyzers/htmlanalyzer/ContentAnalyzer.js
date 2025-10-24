@@ -35,8 +35,24 @@ export default class ContentAnalyzer {
         const readability = this.analyzeReadability(analysisDoc);
         const keywords = this.analyzeKeywords(analysisDoc);
         const multimedia = this.analyzeMultimedia(analysisDoc);
+        const semanticElements = this.analyzeSemanticElements(analysisDoc);
+        const breadcrumbs = this.analyzeBreadcrumbs(analysisDoc);
 
         const score = this.calculateContentScore(images, text, headings, links, readability);
+
+        // Генерируем рекомендации по контенту
+        const recommendations = this.generateContentRecommendations(
+            images,
+            links,
+            headings,
+            text,
+            readability,
+            keywords,
+            multimedia,
+            semanticElements,
+            breadcrumbs,
+            score
+        );
 
         return {
             images: images,
@@ -46,7 +62,10 @@ export default class ContentAnalyzer {
             readability: readability,
             keywords: keywords,
             multimedia: multimedia,
-            score: score
+            semanticElements: semanticElements,
+            breadcrumbs: breadcrumbs,
+            score: score,
+            recommendations: recommendations
         };
     }
 
@@ -692,4 +711,229 @@ export default class ContentAnalyzer {
 
         return Math.min(score, 100);
     }
+
+    generateContentRecommendations(images, links, headings, text, readability, keywords, multimedia, semanticElements, breadcrumbs, score) {
+        const recommendations = [];
+
+        // Рекомендации по изображениям
+        if (images.total > 0 && images.altPercentage < 80) {
+            recommendations.push({
+                id: 'content-images-no-alt',
+                title: 'Недостаточно изображений с ALT текстом',
+                description: `Только ${images.altPercentage}% изображений имеют ALT текст. ALT текст важен для доступности и SEO.`,
+                suggestion: 'Добавьте описательные ALT тексты ко всем информативным изображениям. Для декоративных изображений используйте пустой alt="".',
+                priority: 'warning',
+                impact: 7,
+                category: 'images',
+                examples: '<img src="product.jpg" alt="Красное платье с цветочным принтом">'
+            });
+        }
+
+        if (images.total > 5 && images.lazyPercentage < 50) {
+            recommendations.push({
+                id: 'content-no-lazy-loading',
+                title: 'Отсутствует lazy loading для изображений',
+                description: `Только ${images.lazyPercentage}% изображений используют lazy loading, что замедляет загрузку страницы.`,
+                suggestion: 'Добавьте атрибут loading="lazy" для изображений ниже сгиба страницы.',
+                priority: 'warning',
+                impact: 6,
+                category: 'images',
+                examples: '<img src="image.jpg" loading="lazy" alt="Описание">'
+            });
+        }
+
+        if (images.total === 0) {
+            recommendations.push({
+                id: 'content-no-images',
+                title: 'На странице нет изображений',
+                description: 'Страница не содержит изображений, что может ухудшить пользовательский опыт.',
+                suggestion: 'Добавьте релевантные изображения, инфографику или иллюстрации для улучшения визуального восприятия.',
+                priority: 'info',
+                impact: 4,
+                category: 'images'
+            });
+        }
+
+        // Рекомендации по ссылкам
+        if (links.brokenLinks > 0) {
+            recommendations.push({
+                id: 'content-broken-links',
+                title: 'Обнаружены пустые ссылки',
+                description: `Найдено ${links.brokenLinks} ссылок без текста, что плохо для доступности и SEO.`,
+                suggestion: 'Добавьте осмысленный текст ко всем ссылкам. Избегайте текстов "кликните здесь" или "подробнее".',
+                priority: 'warning',
+                impact: 6,
+                category: 'links',
+                examples: '<a href="/about">О нашей компании</a> вместо <a href="/about">тут</a>'
+            });
+        }
+
+        if (links.external > 0 && links.nofollowPercentage < 50) {
+            recommendations.push({
+                id: 'content-external-links',
+                title: 'Внешние ссылки без nofollow',
+                description: `Большинство внешних ссылок не используют rel="nofollow", что может влиять на SEO.`,
+                suggestion: 'Добавьте rel="nofollow" к внешним ссылкам, особенно к пользовательскому контенту и рекламе.',
+                priority: 'info',
+                impact: 5,
+                category: 'links',
+                examples: '<a href="https://external.com" rel="nofollow">Внешний сайт</a>'
+            });
+        }
+
+        // Рекомендации по заголовкам
+        if (!headings.hasH1) {
+            recommendations.push({
+                id: 'content-no-h1',
+                title: 'Отсутствует заголовок H1',
+                description: 'На странице нет основного заголовка H1, что важно для структуры и SEO.',
+                suggestion: 'Добавьте один заголовок H1, который четко описывает содержание страницы.',
+                priority: 'critical',
+                impact: 8,
+                category: 'headings',
+                examples: '<h1>Основной заголовок страницы</h1>'
+            });
+        }
+
+        if (!headings.validHierarchy) {
+            recommendations.push({
+                id: 'content-heading-hierarchy',
+                title: 'Неправильная иерархия заголовков',
+                description: 'Обнаружены пропуски в иерархии заголовков (например, H1 сразу за H3).',
+                suggestion: 'Соблюдайте правильную последовательность заголовков: H1 → H2 → H3 и т.д.',
+                priority: 'warning',
+                impact: 6,
+                category: 'headings'
+            });
+        }
+
+        if (headings.h1 && headings.h1.count > 1) {
+            recommendations.push({
+                id: 'content-multiple-h1',
+                title: 'Несколько заголовков H1',
+                description: `Обнаружено ${headings.h1.count} заголовков H1. На странице должен быть только один H1.`,
+                suggestion: 'Оставьте один основной заголовок H1, остальные преобразуйте в H2.',
+                priority: 'warning',
+                impact: 7,
+                category: 'headings'
+            });
+        }
+
+        // Рекомендации по текстовому контенту
+        if (text.textAnalysis.contentWords < 300) {
+            recommendations.push({
+                id: 'content-insufficient-text',
+                title: 'Недостаточно текстового контента',
+                description: `Страница содержит только ${text.textAnalysis.contentWords} слов, что может быть недостаточно для хорошего SEO.`,
+                suggestion: 'Добавьте больше качественного текстового контента, раскрывающего тему страницы.',
+                priority: 'warning',
+                impact: 7,
+                category: 'text'
+            });
+        }
+
+        if (text.textAnalysis.paragraphs < 3) {
+            recommendations.push({
+                id: 'content-few-paragraphs',
+                title: 'Мало текстовых блоков',
+                description: `Страница содержит только ${text.textAnalysis.paragraphs} параграфов.`,
+                suggestion: 'Разбейте текст на большее количество логических блоков для лучшей читаемости.',
+                priority: 'info',
+                impact: 4,
+                category: 'text'
+            });
+        }
+
+        // Рекомендации по читаемости
+        if (readability.score < 60) {
+            recommendations.push({
+                id: 'content-poor-readability',
+                title: 'Низкая читаемость текста',
+                description: `Индекс читаемости: ${readability.score}/100. Текст может быть сложен для понимания.`,
+                suggestion: 'Упростите предложения, разбейте длинные абзацы, используйте более простые слова.',
+                priority: 'warning',
+                impact: 6,
+                category: 'readability'
+            });
+        }
+
+        if (readability.avgWordsPerSentence > 20) {
+            recommendations.push({
+                id: 'content-long-sentences',
+                title: 'Слишком длинные предложения',
+                description: `Средняя длина предложения: ${readability.avgWordsPerSentence} слов. Рекомендуется до 15-20 слов.`,
+                suggestion: 'Разбейте длинные предложения на более короткие для лучшей читаемости.',
+                priority: 'info',
+                impact: 5,
+                category: 'readability'
+            });
+        }
+
+        // Рекомендации по семантическим элементам
+        const semanticTags = Object.values(semanticElements).reduce((sum, count) => sum + count, 0);
+        if (semanticTags === 0) {
+            recommendations.push({
+                id: 'content-no-semantic',
+                title: 'Отсутствуют семантические HTML5 теги',
+                description: 'Страница не использует современные семантические теги (header, nav, main, footer и др.).',
+                suggestion: 'Замените div на семантические теги для улучшения доступности и SEO.',
+                priority: 'info',
+                impact: 4,
+                category: 'semantics',
+                examples: '<header>, <nav>, <main>, <article>, <section>, <footer>'
+            });
+        }
+
+        // Рекомендации по хлебным крошкам
+        if (!breadcrumbs.exists) {
+            recommendations.push({
+                id: 'content-no-breadcrumbs',
+                title: 'Отсутствуют хлебные крошки',
+                description: 'На странице нет навигационной цепочки (breadcrumbs), что ухудшает пользовательский опыт.',
+                suggestion: 'Добавьте хлебные крошки для улучшения навигации по сайту.',
+                priority: 'info',
+                impact: 4,
+                category: 'navigation'
+            });
+        }
+
+        // Рекомендации по ключевым словам
+        if (keywords.topWords.length > 0) {
+            const topWord = keywords.topWords[0];
+            if (topWord.count / keywords.totalWords > 0.05) {
+                recommendations.push({
+                    id: 'content-keyword-stuffing',
+                    title: 'Возможный переспам ключевых слов',
+                    description: `Слово "${topWord.word}" встречается слишком часто (${topWord.count} раз).`,
+                    suggestion: 'Уменьшите плотность ключевых слов, используйте синонимы и естественный язык.',
+                    priority: 'warning',
+                    impact: 6,
+                    category: 'keywords'
+                });
+            }
+        }
+
+        // Положительные рекомендации
+        if (score >= 80) {
+            recommendations.push({
+                id: 'content-excellent',
+                title: 'Отличное качество контента',
+                description: 'Контент страницы хорошо оптимизирован и имеет хорошую структуру.',
+                suggestion: 'Продолжайте поддерживать высокое качество контента на всех страницах сайта.',
+                priority: 'info',
+                impact: 2,
+                category: 'maintenance'
+            });
+        }
+
+        // Сортируем рекомендации по приоритету и влиянию
+        return recommendations.sort((a, b) => {
+            const priorityOrder = { critical: 0, warning: 1, info: 2 };
+            if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
+            }
+            return b.impact - a.impact;
+        });
+    }
+
 }

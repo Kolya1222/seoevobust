@@ -24,7 +24,6 @@ export default class PerformanceSectionRenderer {
                 ${this.renderNavigationTimingSection(navigation)}
                 ${this.renderResourceAnalysisSection(resources)}
                 ${this.renderOptimizationsSection(optimizations)}
-                ${this.renderPerformanceRecommendations(safePerformance)}
             </div>
         `;
     }
@@ -174,25 +173,6 @@ export default class PerformanceSectionRenderer {
                         <span class="opt-value">${images.modernFormats || 0}</span>
                         <span class="opt-details">WebP/AVIF</span>
                     </div>
-                </div>
-            </div>
-        `;
-    }
-
-    renderPerformanceRecommendations(performance) {
-        const recommendations = performance.recommendations || [];
-        
-        if (recommendations.length === 0) {
-            recommendations.push('Производительность в норме, продолжайте мониторинг');
-        }
-
-        return `
-            <div class="section-card">
-                <h5>Рекомендации по производительности</h5>
-                <div class="performance-recommendations">
-                    ${recommendations.map(rec => `
-                        <div class="performance-recommendation">• ${rec}</div>
-                    `).join('')}
                 </div>
             </div>
         `;

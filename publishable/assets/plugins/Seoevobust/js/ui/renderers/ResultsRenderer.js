@@ -23,7 +23,8 @@ export default class ResultsRenderer {
             url: analysis?.url || window.location.href,
             basic: analysis?.basic || {},
             performance: analysis?.performance || {},
-            security: analysis?.security || {}
+            security: analysis?.security || {},
+            recommendations: analysis?.recommendations || []
         };
 
         // Асинхронно получаем HTML для производительности

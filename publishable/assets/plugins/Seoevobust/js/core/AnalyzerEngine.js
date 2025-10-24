@@ -18,6 +18,14 @@ export default class AnalyzerEngine {
             this.securityAnalyzer.analyze(document)
         ]);
 
+        const allRecommendations = [
+            ...(htmlAnalysis.basic.recommendations || []),
+            ...(htmlAnalysis.content.recommendations || []),
+            ...(htmlAnalysis.technical.recommendations || []),
+            ...(performanceAnalysis.recommendations || []),
+            ...(securityAnalysis.recommendations || [])
+        ];
+        
         const overallScore = this.calculateOverallScore(
             htmlAnalysis.score,
             performanceAnalysis.score,
@@ -30,7 +38,8 @@ export default class AnalyzerEngine {
             security: securityAnalysis,
             timestamp: new Date().toISOString(),
             url: url,
-            score: overallScore
+            score: overallScore,
+            recommendations: allRecommendations,
         };
     }
 

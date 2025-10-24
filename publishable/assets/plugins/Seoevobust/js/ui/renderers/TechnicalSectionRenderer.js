@@ -367,6 +367,9 @@ export default class TechnicalSectionRenderer {
             hasCanonical: false
         };
 
+        // Дополнительная проверка для types
+        const safeTypes = safeLinks.types || {};
+
         return `
             <div class="section-card">
                 <h5>Технические ссылки</h5>
@@ -380,20 +383,30 @@ export default class TechnicalSectionRenderer {
                     <div class="link-stat ${safeLinks.hasPreconnect ? 'good' : 'warning'}">
                         Preconnect: <strong>${safeLinks.hasPreconnect ? '✅' : '❌'}</strong>
                     </div>
+                    <div class="link-stat ${safeLinks.hasDNS ? 'good' : 'warning'}">
+                        DNS Prefetch: <strong>${safeLinks.hasDNS ? '✅' : '❌'}</strong>
+                    </div>
                 </div>
                 
-                ${Object.keys(safeLinks.types).length > 0 ? `
+                ${Object.keys(safeTypes).length > 0 ? `
                     <div class="link-types">
                         <h6>Типы ссылок:</h6>
                         <div class="type-tags">
-                            ${Object.entries(safeLinks.types).map(([type, items]) => `
-                                <span class="type-tag">
-                                    ${type}: <strong>${items.length}</strong>
-                                </span>
-                            `).join('')}
+                            ${Object.entries(safeTypes).map(([type, items]) => {
+                                const itemsArray = Array.isArray(items) ? items : [];
+                                return `
+                                    <span class="type-tag">
+                                        ${type}: <strong>${itemsArray.length}</strong>
+                                    </span>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
-                ` : ''}
+                ` : '<div class="no-types">Типы ссылок не обнаружены</div>'}
+                
+                <div class="links-total">
+                    Всего технических ссылок: <strong>${safeLinks.total}</strong>
+                </div>
             </div>
         `;
     }

@@ -21,7 +21,7 @@ export default class HtmlAnalyzer {
             basic: basicAnalysis,
             content: contentAnalysis,
             technical: technicalAnalysis,
-            score: this.calculateHtmlScore(basicAnalysis, contentAnalysis, technicalAnalysis)
+            score: this.calculateHtmlScore(basicAnalysis, contentAnalysis, technicalAnalysis),
         };
     }
 

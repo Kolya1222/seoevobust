@@ -17,6 +17,18 @@ export default class SecurityAnalyzer {
             cookies
         );
 
+        // Генерируем рекомендации по безопасности
+        const recommendations = this.generateSecurityRecommendations(
+            isHTTPS,
+            mixedContent,
+            securityHeaders,
+            formsSecurity,
+            externalResources,
+            cookies,
+            vulnerabilities,
+            score
+        );
+
         return {
             https: isHTTPS,
             mixedContent: mixedContent,
@@ -26,7 +38,8 @@ export default class SecurityAnalyzer {
             cookies: cookies,
             vulnerabilities: vulnerabilities,
             score: score,
-            riskLevel: this.getRiskLevel(score)
+            riskLevel: this.getRiskLevel(score),
+            recommendations: recommendations
         };
     }
 
@@ -536,5 +549,197 @@ export default class SecurityAnalyzer {
         if (score >= 70) return 'Средний';
         if (score >= 50) return 'Высокий';
         return 'Критический';
+    }
+    generateSecurityRecommendations(isHTTPS, mixedContent, securityHeaders, formsSecurity, externalResources, cookies, vulnerabilities, score) {
+        const recommendations = [];
+
+        // Рекомендации по HTTPS
+        if (!isHTTPS) {
+            recommendations.push({
+                id: 'security-no-https',
+                title: 'Отсутствует HTTPS',
+                description: 'Сайт использует незащищенное HTTP соединение, что подвергает данные пользователей риску перехвата.',
+                suggestion: 'Получите и установите SSL/TLS сертификат, настройте перенаправление с HTTP на HTTPS.',
+                priority: 'critical',
+                impact: 10,
+                category: 'encryption'
+            });
+        }
+
+        // Рекомендации по смешанному контенту
+        if (mixedContent.total > 0) {
+            recommendations.push({
+                id: 'security-mixed-content',
+                title: 'Обнаружен смешанный контент',
+                description: `Найдено ${mixedContent.total} ресурсов, загружаемых по HTTP на HTTPS странице.`,
+                suggestion: 'Замените все HTTP ссылки на HTTPS, используйте относительные пути или протокол-агностичные URL (//example.com/resource).',
+                priority: 'critical',
+                impact: 9,
+                category: 'encryption',
+                examples: '//example.com/image.jpg вместо http://example.com/image.jpg'
+            });
+        }
+
+        // Рекомендации по security headers
+        if (!securityHeaders['content-security-policy'].exists) {
+            recommendations.push({
+                id: 'security-no-csp',
+                title: 'Отсутствует Content Security Policy',
+                description: 'CSP помогает предотвратить XSS атаки, ограничивая источники загружаемых ресурсов.',
+                suggestion: 'Настройте Content Security Policy заголовок, начните с разрешения только доверенных источников.',
+                priority: 'warning',
+                impact: 8,
+                category: 'headers'
+            });
+        }
+
+        if (!securityHeaders['x-frame-options'].exists) {
+            recommendations.push({
+                id: 'security-no-frame-options',
+                title: 'Отсутствует X-Frame-Options',
+                description: 'Сайт может быть встроен в iframe на других доменах, что открывает возможности для clickjacking атак.',
+                suggestion: 'Добавьте заголовок X-Frame-Options: SAMEORIGIN или DENY.',
+                priority: 'warning',
+                impact: 7,
+                category: 'headers'
+            });
+        }
+
+        if (!securityHeaders['x-content-type-options'].exists) {
+            recommendations.push({
+                id: 'security-no-content-type-options',
+                title: 'Отсутствует X-Content-Type-Options',
+                description: 'Браузеры могут пытаться определить MIME-тип ресурсов, что может быть использовано злоумышленниками.',
+                suggestion: 'Добавьте заголовок X-Content-Type-Options: nosniff.',
+                priority: 'warning',
+                impact: 6,
+                category: 'headers'
+            });
+        }
+
+        // Рекомендации по формам
+        if (formsSecurity.insecure > 0) {
+            recommendations.push({
+                id: 'security-insecure-forms',
+                title: 'Небезопасные формы',
+                description: `${formsSecurity.insecure} из ${formsSecurity.total} форм отправляют данные по незащищенному протоколу.`,
+                suggestion: 'Исправьте атрибут action форм на HTTPS URL, убедитесь что все формы отправляются по защищенному соединению.',
+                priority: 'critical',
+                impact: 9,
+                category: 'forms'
+            });
+        }
+
+        if (formsSecurity.hasPasswordFields) {
+            const formsWithoutCSRF = formsSecurity.forms.filter(form => form.hasPassword && !form.hasCSRF);
+            if (formsWithoutCSRF.length > 0) {
+                recommendations.push({
+                    id: 'security-no-csrf',
+                    title: 'Отсутствует защита от CSRF',
+                    description: 'Формы с паролями не имеют CSRF токенов, что делает их уязвимыми к межсайтовой подделке запросов.',
+                    suggestion: 'Добавьте CSRF токены во все формы, изменяющие состояние приложения.',
+                    priority: 'warning',
+                    impact: 8,
+                    category: 'forms',
+                    examples: '<input type="hidden" name="_csrf" value="токен">'
+                });
+            }
+        }
+
+        // Рекомендации по внешним ресурсам
+        const analyticsScripts = externalResources.scripts.filter(s => s.type === 'analytics');
+        const adScripts = externalResources.scripts.filter(s => s.type === 'ads');
+        
+        if (analyticsScripts.length > 0) {
+            recommendations.push({
+                id: 'security-external-analytics',
+                title: 'Внешние аналитические скрипты',
+                description: `Обнаружено ${analyticsScripts.length} внешних аналитических скриптов, которые могут отслеживать пользователей.`,
+                suggestion: 'Убедитесь что используете официальные источники скриптов, рассмотрите использование локального хостинга аналитики.',
+                priority: 'info',
+                impact: 4,
+                category: 'external-resources'
+            });
+        }
+
+        if (adScripts.length > 0) {
+            recommendations.push({
+                id: 'security-external-ads',
+                title: 'Внешние рекламные скрипты',
+                description: `Обнаружено ${adScripts.length} рекламных скриптов, которые могут представлять угрозу безопасности.`,
+                suggestion: 'Используйте sandbox атрибуты для iframe, ограничьте доверенные рекламные сети.',
+                priority: 'warning',
+                impact: 6,
+                category: 'external-resources'
+            });
+        }
+
+        // Рекомендации по cookies
+        if (cookies.total > 0) {
+            const securePercentage = Math.round((cookies.secure / cookies.total) * 100);
+            if (securePercentage < 100) {
+                recommendations.push({
+                    id: 'security-insecure-cookies',
+                    title: 'Небезопасные cookies',
+                    description: `Только ${securePercentage}% cookies помечены как Secure.`,
+                    suggestion: 'Добавьте атрибут Secure ко всем cookies, передающим чувствительные данные.',
+                    priority: 'warning',
+                    impact: 7,
+                    category: 'cookies'
+                });
+            }
+
+            const httpOnlyPercentage = Math.round((cookies.httpOnly / cookies.total) * 100);
+            if (httpOnlyPercentage < 100) {
+                recommendations.push({
+                    id: 'security-no-httponly',
+                    title: 'Cookies доступны из JavaScript',
+                    description: `Только ${httpOnlyPercentage}% cookies защищены атрибутом HttpOnly.`,
+                    suggestion: 'Добавьте атрибут HttpOnly ко всем cookies, не требующим доступа из JavaScript.',
+                    priority: 'warning',
+                    impact: 6,
+                    category: 'cookies'
+                });
+            }
+        }
+
+        // Рекомендации из обнаруженных уязвимостей
+        vulnerabilities.forEach((vuln, index) => {
+            let priority = 'info';
+            if (vuln.severity === 'high') priority = 'critical';
+            if (vuln.severity === 'medium') priority = 'warning';
+
+            recommendations.push({
+                id: `security-vuln-${index}`,
+                title: `Уязвимость: ${vuln.type}`,
+                description: vuln.description,
+                suggestion: vuln.recommendation,
+                priority: priority,
+                impact: vuln.severity === 'high' ? 8 : vuln.severity === 'medium' ? 6 : 4,
+                category: 'vulnerabilities'
+            });
+        });
+
+        // Положительные рекомендации
+        if (score >= 90) {
+            recommendations.push({
+                id: 'security-excellent',
+                title: 'Отличная безопасность',
+                description: 'Ваш сайт демонстрирует высокий уровень безопасности.',
+                suggestion: 'Продолжайте соблюдать лучшие практики безопасности, регулярно обновляйте зависимости.',
+                priority: 'info',
+                impact: 2,
+                category: 'maintenance'
+            });
+        }
+
+        // Сортируем рекомендации по приоритету и влиянию
+        return recommendations.sort((a, b) => {
+            const priorityOrder = { critical: 0, warning: 1, info: 2 };
+            if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
+            }
+            return b.impact - a.impact;
+        });
     }
 }

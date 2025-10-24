@@ -20,6 +20,16 @@ export default class PerformanceAnalyzer {
                 optimizationMetrics
             );
 
+            // Генерируем рекомендации в нужном формате
+            const recommendations = this.generatePerformanceRecommendations(
+                navigationMetrics,
+                resourceMetrics,
+                paintMetrics,
+                memoryMetrics,
+                optimizationMetrics,
+                perfScore
+            );
+
             return {
                 ...navigationMetrics,
                 ...resourceMetrics,
@@ -28,11 +38,7 @@ export default class PerformanceAnalyzer {
                 optimizations: optimizationMetrics,
                 score: perfScore,
                 grade: this.getPerformanceGrade(perfScore),
-                recommendations: this.generatePerformanceRecommendations(
-                    navigationMetrics,
-                    resourceMetrics,
-                    optimizationMetrics
-                )
+                recommendations: recommendations
             };
             
         } catch (error) {
@@ -264,21 +270,171 @@ export default class PerformanceAnalyzer {
         return 'F';
     }
 
-    generatePerformanceRecommendations(navigation, resources, optimizations) {
+    generatePerformanceRecommendations(navigation, resources, paint, memory, optimizations, score) {
         const recommendations = [];
 
-        if (navigation.loadTime > 3000) {
-            recommendations.push('Оптимизируйте время загрузки страницы');
+        // Анализ времени загрузки
+        if (navigation.loadTime > 5000) {
+            recommendations.push({
+                id: 'perf-load-time-critical',
+                title: 'Критически долгая загрузка страницы',
+                description: `Время полной загрузки страницы составляет ${navigation.loadTime}мс, что значительно превышает рекомендуемые 3 секунды.`,
+                suggestion: 'Оптимизируйте критический путь рендеринга, используйте lazy loading для невидимых элементов, сжимайте ресурсы.',
+                priority: 'critical',
+                impact: 9,
+                category: 'loading'
+            });
+        } else if (navigation.loadTime > 3000) {
+            recommendations.push({
+                id: 'perf-load-time-warning',
+                title: 'Длительное время загрузки',
+                description: `Время загрузки ${navigation.loadTime}мс превышает рекомендуемый порог в 3 секунды.`,
+                suggestion: 'Минифицируйте CSS и JavaScript, оптимизируйте изображения, используйте кэширование.',
+                priority: 'warning',
+                impact: 7,
+                category: 'loading'
+            });
         }
 
-        if (resources.totalSize > 2 * 1024 * 1024) {
-            recommendations.push('Уменьшите общий размер ресурсов');
-        }
-        if (optimizations.images.lazy / optimizations.images.total < 0.5) {
-            recommendations.push('Добавьте lazy loading для изображений');
+        if (navigation.ttfb > 600) {
+            recommendations.push({
+                id: 'perf-ttfb-slow',
+                title: 'Медленный отклик сервера',
+                description: `Время до первого байта (TTFB) составляет ${navigation.ttfb}мс, что указывает на проблемы серверной части.`,
+                suggestion: 'Оптимизируйте серверные процессы, используйте кэширование на стороне сервера, рассмотрите CDN.',
+                priority: 'warning',
+                impact: 6,
+                category: 'server'
+            });
         }
 
-        return recommendations;
+        // Анализ количества ресурсов
+        if (resources.totalRequests > 100) {
+            recommendations.push({
+                id: 'perf-too-many-requests',
+                title: 'Слишком много HTTP-запросов',
+                description: `Страница загружает ${resources.totalRequests} ресурсов, что увеличивает время загрузки.`,
+                suggestion: 'Объедините CSS и JS файлы, используйте sprites для изображений, реализуйте lazy loading.',
+                priority: 'warning',
+                impact: 7,
+                category: 'resources'
+            });
+        } else if (resources.totalRequests > 50) {
+            recommendations.push({
+                id: 'perf-many-requests',
+                title: 'Большое количество HTTP-запросов',
+                description: `Обнаружено ${resources.totalRequests} запросов к ресурсам.`,
+                suggestion: 'Рассмотрите объединение мелких ресурсов, используйте HTTP/2 для параллельной загрузки.',
+                priority: 'info',
+                impact: 5,
+                category: 'resources'
+            });
+        }
+
+        // Анализ размера ресурсов
+        const totalSizeMB = Math.round(resources.totalSize / (1024 * 1024));
+        if (totalSizeMB > 3) {
+            recommendations.push({
+                id: 'perf-large-size-critical',
+                title: 'Критически большой размер страницы',
+                description: `Общий размер ресурсов ${totalSizeMB}MB значительно превышает рекомендуемые 2MB.`,
+                suggestion: 'Сжимайте изображения, используйте современные форматы (WebP, AVIF), минифицируйте код, включите GZIP/Brotli сжатие.',
+                priority: 'critical',
+                impact: 8,
+                category: 'optimization'
+            });
+        } else if (totalSizeMB > 2) {
+            recommendations.push({
+                id: 'perf-large-size-warning',
+                title: 'Большой размер страницы',
+                description: `Размер страницы ${totalSizeMB}MB близок к критическому значению.`,
+                suggestion: 'Оптимизируйте изображения, удалите неиспользуемый CSS и JavaScript.',
+                priority: 'warning',
+                impact: 6,
+                category: 'optimization'
+            });
+        }
+
+        // Анализ lazy loading изображений
+        const imagesTotal = optimizations.images.total || 1;
+        const lazyPercentage = (optimizations.images.lazy || 0) / imagesTotal;
+        if (lazyPercentage < 0.3 && imagesTotal > 5) {
+            recommendations.push({
+                id: 'perf-lazy-loading',
+                title: 'Отсутствует lazy loading для изображений',
+                description: `Только ${Math.round(lazyPercentage * 100)}% изображений используют lazy loading.`,
+                suggestion: 'Добавьте атрибут loading="lazy" для изображений ниже сгиба (below the fold).',
+                priority: 'warning',
+                impact: 6,
+                category: 'images',
+                examples: '<img src="image.jpg" loading="lazy" alt="Description">'
+            });
+        }
+
+        // Анализ async/defer для скриптов
+        const scriptsExternal = optimizations.scripts.external || 1;
+        const asyncDeferCount = (optimizations.scripts.async || 0) + (optimizations.scripts.defer || 0);
+        const asyncPercentage = asyncDeferCount / scriptsExternal;
+        if (asyncPercentage < 0.5 && scriptsExternal > 2) {
+            recommendations.push({
+                id: 'perf-script-loading',
+                title: 'Неоптимальная загрузка скриптов',
+                description: `Только ${Math.round(asyncPercentage * 100)}% внешних скриптов используют async/defer.`,
+                suggestion: 'Добавьте атрибуты async или defer к внешним скриптам, которые не критичны для первоначального рендеринга.',
+                priority: 'warning',
+                impact: 7,
+                category: 'scripts',
+                examples: '<script src="app.js" defer></script>'
+            });
+        }
+
+        // Анализ First Contentful Paint
+        if (paint.firstContentfulPaint > 2000) {
+            recommendations.push({
+                id: 'perf-fcp-slow',
+                title: 'Медленный First Contentful Paint',
+                description: `Первое отображение контента занимает ${paint.firstContentfulPaint}мс.`,
+                suggestion: 'Уменьшите время загрузки критических ресурсов, оптимизируйте CSS, используйте предварительную загрузку шрифтов.',
+                priority: 'warning',
+                impact: 7,
+                category: 'rendering'
+            });
+        }
+
+        // Анализ использования памяти
+        if (memory.usagePercentage > 80) {
+            recommendations.push({
+                id: 'perf-memory-high',
+                title: 'Высокое потребление памяти',
+                description: `Используется ${memory.usagePercentage}% доступной памяти JavaScript.`,
+                suggestion: 'Оптимизируйте использование памяти, устраните утечки памяти, используйте более эффективные структуры данных.',
+                priority: 'warning',
+                impact: 6,
+                category: 'memory'
+            });
+        }
+
+        // Положительные рекомендации (если все хорошо)
+        if (score >= 90) {
+            recommendations.push({
+                id: 'perf-excellent',
+                title: 'Отличная производительность',
+                description: 'Ваш сайт демонстрирует отличные показатели производительности.',
+                suggestion: 'Продолжайте мониторить производительность при добавлении нового функционала.',
+                priority: 'info',
+                impact: 2,
+                category: 'maintenance'
+            });
+        }
+
+        // Сортируем рекомендации по приоритету и влиянию
+        return recommendations.sort((a, b) => {
+            const priorityOrder = { critical: 0, warning: 1, info: 2 };
+            if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
+            }
+            return b.impact - a.impact;
+        });
     }
 
     getFallbackData() {
@@ -308,7 +464,17 @@ export default class PerformanceAnalyzer {
             },
             score: 85,
             grade: 'B',
-            recommendations: ['Продолжайте мониторить производительность']
+            recommendations: this.generatePerformanceRecommendations(
+                { loadTime: 1800, ttfb: 300 },
+                { totalRequests: 15, totalSize: 1500000 },
+                { firstContentfulPaint: 900 },
+                { usagePercentage: 50 },
+                {
+                    images: { total: 10, lazy: 5 },
+                    scripts: { external: 3, async: 2, defer: 1 }
+                },
+                85
+            )
         };
     }
 }

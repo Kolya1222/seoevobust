@@ -27,8 +27,6 @@ export default class SecuritySectionRenderer {
                 ${this.renderFormsSecuritySection(formsSecurity)}
                 ${this.renderExternalResourcesSection(externalResources)}
                 ${this.renderCookiesSection(cookies)}
-                ${this.renderVulnerabilitiesSection(vulnerabilities)}
-                ${this.renderSecurityRecommendations(security)}
             </div>
         `;
     }
@@ -181,70 +179,6 @@ export default class SecuritySectionRenderer {
                     <div>Secure: <strong>${cookies.secure} (${securePercentage}%)</strong></div>
                     <div>HttpOnly: <strong>${cookies.httpOnly}</strong></div>
                     <div>SameSite: <strong>${cookies.sameSite}</strong></div>
-                </div>
-            </div>
-        `;
-    }
-
-    renderVulnerabilitiesSection(vulnerabilities) {
-        if (vulnerabilities.length === 0) {
-            return `
-                <div class="section-card good">
-                    <h5>✅ Уязвимости</h5>
-                    <div class="no-vulnerabilities">Критических уязвимостей не обнаружено</div>
-                </div>
-            `;
-        }
-
-        return `
-            <div class="section-card bad">
-                <h5>🚨 Обнаруженные уязвимости</h5>
-                <div class="vulnerabilities-list">
-                    ${vulnerabilities.map(vuln => `
-                        <div class="vulnerability-item ${vuln.severity}">
-                            <div class="vuln-header">
-                                <span class="vuln-severity ${vuln.severity}">${this.getSeverityIcon(vuln.severity)} ${vuln.severity}</span>
-                                <span class="vuln-type">${vuln.type}</span>
-                            </div>
-                            <div class="vuln-description">${vuln.description}</div>
-                            <div class="vuln-recommendation">💡 ${vuln.recommendation}</div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-
-    renderSecurityRecommendations(security) {
-        const recommendations = [];
-        
-        if (!security.https) {
-            recommendations.push('Переведите сайт на HTTPS протокол');
-        }
-        
-        if (security.mixedContent.total > 0) {
-            recommendations.push('Исправьте mixed content проблемы');
-        }
-        
-        if (security.formsSecurity.insecure > 0) {
-            recommendations.push('Обновите формы для использования HTTPS');
-        }
-        
-        if (security.vulnerabilities.length > 0) {
-            recommendations.push('Исправьте обнаруженные уязвимости');
-        }
-
-        if (recommendations.length === 0) {
-            recommendations.push('Продолжайте поддерживать текущий уровень безопасности');
-        }
-
-        return `
-            <div class="section-card">
-                <h5>💡 Рекомендации по безопасности</h5>
-                <div class="security-recommendations">
-                    ${recommendations.map(rec => `
-                        <div class="security-recommendation">• ${rec}</div>
-                    `).join('')}
                 </div>
             </div>
         `;

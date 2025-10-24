@@ -18,11 +18,14 @@ export default class TechnicalAnalyzer {
         // Добавляем общую оценку
         const overallScore = this.calculateOverallScore(analyses);
 
+        // Генерируем рекомендации
+        const recommendations = this.generateTechnicalRecommendations(analyses, overallScore);
+
         return {
             ...analyses,
             score: overallScore,
             grade: this.getTechnicalGrade(overallScore),
-            recommendations: this.generateTechnicalRecommendations(analyses)
+            recommendations: recommendations
         };
     }
 
@@ -819,5 +822,320 @@ export default class TechnicalAnalyzer {
         if (structure.breadcrumbs.exists) score += 10;
         if (structure.semantic.article > 0) score += 10;
         return Math.min(score, 100);
+    }
+
+    generateTechnicalRecommendations(analyses, overallScore) {
+        const recommendations = [];
+
+        // Рекомендации по языку
+        if (!analyses.language.exists) {
+            recommendations.push({
+                id: 'tech-no-language',
+                title: 'Не указан язык страницы',
+                description: 'Отсутствует атрибут lang у тега html, что важно для доступности и SEO.',
+                suggestion: 'Добавьте атрибут lang с кодом языка к тегу html.',
+                priority: 'critical',
+                impact: 8,
+                category: 'accessibility',
+                examples: '<html lang="ru">'
+            });
+        } else if (!analyses.language.valid) {
+            recommendations.push({
+                id: 'tech-invalid-language',
+                title: 'Неверно указан язык страницы',
+                description: `Указан язык "${analyses.language.value}", который может быть некорректным.`,
+                suggestion: 'Убедитесь, что используете правильный код языка (например, "ru" для русского).',
+                priority: 'warning',
+                impact: 6,
+                category: 'accessibility'
+            });
+        }
+
+        // Рекомендации по фавиконке
+        if (!analyses.favicon.exists) {
+            recommendations.push({
+                id: 'tech-no-favicon',
+                title: 'Отсутствует фавиконка',
+                description: 'Сайт не имеет фавиконки, что ухудшает визуальное восприятие в браузере.',
+                suggestion: 'Добавьте фавиконку в формате ICO, PNG или SVG.',
+                priority: 'info',
+                impact: 4,
+                category: 'usability',
+                examples: '<link rel="icon" type="image/x-icon" href="/favicon.ico">'
+            });
+        }
+
+        // Рекомендации по Schema.org разметке
+        if (analyses.schema.count === 0) {
+            recommendations.push({
+                id: 'tech-no-schema',
+                title: 'Отсутствует Schema.org разметка',
+                description: 'Страница не использует структурированные данные, что упускает возможности для улучшения SEO.',
+                suggestion: 'Добавьте Schema.org разметку для основных элементов страницы (организация, статья, продукт и т.д.).',
+                priority: 'warning',
+                impact: 7,
+                category: 'seo',
+                examples: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Компания"}</script>'
+            });
+        } else if (analyses.schema.validCount < analyses.schema.count) {
+            recommendations.push({
+                id: 'tech-invalid-schema',
+                title: 'Обнаружены ошибки в Schema.org разметке',
+                description: `${analyses.schema.count - analyses.schema.validCount} из ${analyses.schema.count} схем содержат ошибки.`,
+                suggestion: 'Проверьте валидность JSON-LD разметки с помощью инструментов Google Rich Results Test.',
+                priority: 'warning',
+                impact: 6,
+                category: 'seo'
+            });
+        }
+
+        // Рекомендации по основным типам Schema
+        if (!analyses.schema.hasOrganization) {
+            recommendations.push({
+                id: 'tech-no-org-schema',
+                title: 'Отсутствует разметка организации',
+                description: 'Нет Schema.org разметки для организации, что важно для локального SEO и знанийграфики.',
+                suggestion: 'Добавьте разметку Organization с информацией о компании.',
+                priority: 'info',
+                impact: 5,
+                category: 'seo'
+            });
+        }
+
+        if (!analyses.schema.hasWebsite) {
+            recommendations.push({
+                id: 'tech-no-website-schema',
+                title: 'Отсутствует разметка веб-сайта',
+                description: 'Нет Schema.org разметки для веб-сайта, что может улучшить поисковую выдачу.',
+                suggestion: 'Добавьте разметку WebSite с поисковым полем сайта.',
+                priority: 'info',
+                impact: 4,
+                category: 'seo'
+            });
+        }
+
+        // Рекомендации по структуре
+        if (!analyses.structure.header.exists) {
+            recommendations.push({
+                id: 'tech-no-header',
+                title: 'Отсутствует семантический header',
+                description: 'Страница не использует тег <header> для шапки сайта.',
+                suggestion: 'Замените div на семантический тег <header> для улучшения доступности.',
+                priority: 'warning',
+                impact: 6,
+                category: 'semantics'
+            });
+        }
+
+        if (!analyses.structure.main.exists) {
+            recommendations.push({
+                id: 'tech-no-main',
+                title: 'Отсутствует семантический main',
+                description: 'Страница не использует тег <main> для основного контента.',
+                suggestion: 'Оберните основной контент в тег <main> для улучшения доступности и SEO.',
+                priority: 'warning',
+                impact: 6,
+                category: 'semantics'
+            });
+        }
+
+        if (!analyses.structure.nav.exists) {
+            recommendations.push({
+                id: 'tech-no-nav',
+                title: 'Отсутствует семантическая навигация',
+                description: 'Страница не использует тег <nav> для навигационных элементов.',
+                suggestion: 'Оберните навигационные меню в тег <nav>.',
+                priority: 'info',
+                impact: 5,
+                category: 'semantics'
+            });
+        }
+
+        // Рекомендации по производительности
+        const perf = analyses.performance;
+        if (perf.scripts.sync > 5) {
+            recommendations.push({
+                id: 'tech-too-many-sync-scripts',
+                title: 'Слишком много синхронных скриптов',
+                description: `Обнаружено ${perf.scripts.sync} синхронных скриптов, которые блокируют загрузку страницы.`,
+                suggestion: 'Используйте атрибуты async или defer для некритичных скриптов.',
+                priority: 'warning',
+                impact: 7,
+                category: 'performance'
+            });
+        }
+
+        if (perf.images.count > 0 && perf.images.lazy / perf.images.count < 0.3) {
+            recommendations.push({
+                id: 'tech-no-lazy-images',
+                title: 'Недостаточно изображений с lazy loading',
+                description: `Только ${Math.round((perf.images.lazy / perf.images.count) * 100)}% изображений используют lazy loading.`,
+                suggestion: 'Добавьте loading="lazy" для изображений ниже сгиба страницы.',
+                priority: 'warning',
+                impact: 6,
+                category: 'performance'
+            });
+        }
+
+        // Рекомендации по безопасности
+        if (!analyses.security.csp.exists) {
+            recommendations.push({
+                id: 'tech-no-csp',
+                title: 'Отсутствует Content Security Policy',
+                description: 'CSP помогает предотвратить XSS атаки, ограничивая источники загружаемых ресурсов.',
+                suggestion: 'Настройте Content Security Policy заголовок, начните с разрешения только доверенных источников.',
+                priority: 'warning',
+                impact: 7,
+                category: 'security'
+            });
+        }
+
+        const insecureForms = analyses.security.forms.count - analyses.security.forms.secure;
+        if (insecureForms > 0) {
+            recommendations.push({
+                id: 'tech-insecure-forms',
+                title: 'Небезопасные формы',
+                description: `${insecureForms} форм отправляют данные по незащищенному протоколу.`,
+                suggestion: 'Убедитесь, что все формы используют HTTPS в атрибуте action.',
+                priority: 'critical',
+                impact: 9,
+                category: 'security'
+            });
+        }
+
+        // Рекомендации по мета-тегам
+        if (!analyses.metaTags.hasOG) {
+            recommendations.push({
+                id: 'tech-no-og',
+                title: 'Отсутствует Open Graph разметка',
+                description: 'Нет мета-тегов Open Graph для корректного отображения в социальных сетях.',
+                suggestion: 'Добавьте основные Open Graph теги: og:title, og:description, og:image, og:url.',
+                priority: 'warning',
+                impact: 6,
+                category: 'social',
+                examples: '<meta property="og:title" content="Заголовок страницы">'
+            });
+        }
+
+        if (!analyses.metaTags.basic.viewport) {
+            recommendations.push({
+                id: 'tech-no-viewport',
+                title: 'Отсутствует viewport meta тег',
+                description: 'Без viewport тега страница может некорректно отображаться на мобильных устройствах.',
+                suggestion: 'Добавьте viewport meta тег для корректного отображения на мобильных устройствах.',
+                priority: 'warning',
+                impact: 7,
+                category: 'mobile',
+                examples: '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            });
+        }
+
+        // Рекомендации по скриптам
+        if (analyses.scripts.inline > 5) {
+            recommendations.push({
+                id: 'tech-too-many-inline-scripts',
+                title: 'Слишком много inline скриптов',
+                description: `Обнаружено ${analyses.scripts.inline} inline скриптов, что может замедлить загрузку.`,
+                suggestion: 'Вынесите JavaScript во внешние файлы для кэширования и лучшей производительности.',
+                priority: 'info',
+                impact: 5,
+                category: 'performance'
+            });
+        }
+
+        // Рекомендации по ссылкам
+        if (!analyses.links.hasCanonical) {
+            recommendations.push({
+                id: 'tech-no-canonical',
+                title: 'Отсутствует canonical ссылка',
+                description: 'Нет канонической ссылки, что может вызвать проблемы с дублированием контента.',
+                suggestion: 'Добавьте canonical ссылку для указания предпочтительной версии страницы.',
+                priority: 'warning',
+                impact: 6,
+                category: 'seo',
+                examples: '<link rel="canonical" href="https://example.com/page">'
+            });
+        }
+
+        // Рекомендации по доступности
+        const accessibility = analyses.accessibility;
+        if (accessibility.images.total > 0) {
+            const altRatio = accessibility.images.withAlt / accessibility.images.total;
+            if (altRatio < 0.8) {
+                recommendations.push({
+                    id: 'tech-low-alt-coverage',
+                    title: 'Недостаточно ALT текстов у изображений',
+                    description: `Только ${Math.round(altRatio * 100)}% изображений имеют ALT текст.`,
+                    suggestion: 'Добавьте описательные ALT тексты ко всем информативным изображениям.',
+                    priority: 'warning',
+                    impact: 6,
+                    category: 'accessibility'
+                });
+            }
+        }
+
+        if (accessibility.forms.total > 0) {
+            const labelsRatio = accessibility.forms.withLabels / accessibility.forms.total;
+            if (labelsRatio < 0.8) {
+                recommendations.push({
+                    id: 'tech-low-labels-coverage',
+                    title: 'Недостаточно label у полей форм',
+                    description: `Только ${Math.round(labelsRatio * 100)}% форм имеют связанные label.`,
+                    suggestion: 'Добавьте label ко всем полям ввода для улучшения доступности.',
+                    priority: 'warning',
+                    impact: 6,
+                    category: 'accessibility'
+                });
+            }
+        }
+
+        // Рекомендации по техническому SEO
+        const seo = analyses.seo;
+        if (!seo.canonical.exists) {
+            recommendations.push({
+                id: 'tech-seo-no-canonical',
+                title: 'Отсутствует canonical URL',
+                description: 'Не указана каноническая версия страницы для поисковых систем.',
+                suggestion: 'Добавьте тег canonical для предотвращения дублирования контента.',
+                priority: 'warning',
+                impact: 7,
+                category: 'seo'
+            });
+        }
+
+        if (!seo.robots.exists) {
+            recommendations.push({
+                id: 'tech-seo-no-robots',
+                title: 'Отсутствует robots meta тег',
+                description: 'Не указаны инструкции для поисковых роботов.',
+                suggestion: 'Добавьте robots meta тег для контроля индексации и следования по ссылкам.',
+                priority: 'info',
+                impact: 4,
+                category: 'seo',
+                examples: '<meta name="robots" content="index, follow">'
+            });
+        }
+
+        // Положительные рекомендации
+        if (overallScore >= 90) {
+            recommendations.push({
+                id: 'tech-excellent',
+                title: 'Отличная техническая оптимизация',
+                description: 'Техническая реализация сайта соответствует лучшим практикам.',
+                suggestion: 'Продолжайте поддерживать высокие технические стандарты на всех страницах.',
+                priority: 'info',
+                impact: 2,
+                category: 'maintenance'
+            });
+        }
+
+        // Сортируем рекомендации по приоритету и влиянию
+        return recommendations.sort((a, b) => {
+            const priorityOrder = { critical: 0, warning: 1, info: 2 };
+            if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
+            }
+            return b.impact - a.impact;
+        });
     }
 }

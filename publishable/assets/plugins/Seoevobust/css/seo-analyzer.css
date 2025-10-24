@@ -3009,6 +3009,135 @@
     background: rgba(255, 255, 255, 0.2);
     border-radius: 3px;
 }
+
+/* Improvement Tips Styles - Glassmorphism */
+.improvement-tips {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 16px 0;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.improvement-tips::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #4CAF50, #8BC34A);
+    border-radius: 12px 0 0 12px;
+}
+
+.improvement-tips:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.improvement-tips strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 12px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.improvement-tips ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.improvement-tips li {
+    position: relative;
+    padding: 8px 0 8px 24px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.4;
+    transition: all 0.3s ease;
+}
+
+.improvement-tips li::before {
+    content: '💡';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    font-size: 14px;
+    filter: brightness(1.2);
+}
+
+.improvement-tips li:hover {
+    color: #ffffff;
+    transform: translateX(5px);
+}
+
+.improvement-tips li:hover::before {
+    animation: tipPulse 1s ease-in-out;
+}
+
+@keyframes tipPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .improvement-tips {
+        padding: 16px;
+        margin: 12px 0;
+    }
+    
+    .improvement-tips strong {
+        font-size: 13px;
+    }
+    
+    .improvement-tips li {
+        font-size: 12px;
+        padding: 6px 0 6px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .improvement-tips {
+        padding: 14px;
+        border-radius: 10px;
+    }
+    
+    .improvement-tips::before {
+        width: 3px;
+    }
+    
+    .improvement-tips li {
+        padding-left: 18px;
+    }
+    
+    .improvement-tips li::before {
+        font-size: 12px;
+    }
+}
+
+/* Animation for improvement tips appearance */
+.improvement-tips {
+    animation: tipsSlideIn 0.5s ease-out;
+}
+
+@keyframes tipsSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Export Actions Styles */
 .export-actions {
     display: flex;
