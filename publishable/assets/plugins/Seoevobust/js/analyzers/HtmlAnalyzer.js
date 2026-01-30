@@ -13,9 +13,11 @@ export default class HtmlAnalyzer {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
+        const currentUrl = window.location.href;
+
         const basicAnalysis = this.basicAnalyzer.analyze(doc);
         const contentAnalysis = this.contentAnalyzer.analyze(doc);
-        const technicalAnalysis = this.technicalAnalyzer.analyze(doc);
+        const technicalAnalysis = this.technicalAnalyzer.analyze(doc, currentUrl);
 
         return {
             basic: basicAnalysis,
